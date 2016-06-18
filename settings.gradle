@@ -1,0 +1,3 @@
+rootProject.name = 'franky'
+include 'franky-proto'
+
