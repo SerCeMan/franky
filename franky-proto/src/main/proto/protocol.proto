@@ -1,0 +1,20 @@
+syntax = "proto2";
+package me.serce.franky;
+
+message Response {
+    required int32 calls_total = 1;
+    required int32 calls_non_java = 2;
+    required int32 calls_gc = 3;
+    required int32 calls_deopt = 4;
+    required int32 calls_unknown = 5;
+}
+
+message Request {
+    enum RequestType {
+        START_PROFILING = 0;
+        STOP_PROFILING = 1;
+        DETACH = 2;
+    }
+
+    required RequestType type = 1;
+}

@@ -76,7 +76,8 @@ Agent_OnLoad(JavaVM* vm, char* options, void* reserved) {
 extern "C" JNIEXPORT jint JNICALL
 Agent_OnAttach(JavaVM* vm, char* options, void* reserved) {
     VM::attach(vm);
-    Profiler::_instance.init(4897);
+    int port = atoi(options);
+    Profiler::_instance.init(port);
     return 0;
 }
 

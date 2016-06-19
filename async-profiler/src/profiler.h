@@ -16,6 +16,7 @@
 
 #include <jvmti.h>
 #include <iostream>
+#include "proto/protocol.pb.h"
 
 
 #define MAX_FRAMES     64
@@ -110,6 +111,10 @@ private:
     void storeMethod(jmethodID method);
 
     void setTimer(long sec, long usec);
+
+    void readRequest(me::serce::franky::Request *message);
+
+    void writeResult();
 
 public:
     static Profiler _instance;

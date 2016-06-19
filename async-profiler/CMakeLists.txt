@@ -4,7 +4,7 @@ project(franky)
 set(JAVA_HOME /usr/lib/jvm/java-8-oracle)
 set(LIB_NAME libasyncProfiler.so)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fPIC")
 
 include_directories(
         ${JAVA_HOME}/include

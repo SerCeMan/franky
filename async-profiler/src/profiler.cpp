@@ -27,10 +27,15 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <proto/protocol.pb.h>
+#include <google/protobuf/io/coded_stream.h>
+#include <google/protobuf/io/zero_copy_stream_impl.h>
 
 #include "profiler.h"
 #include "vmEntry.h"
 
+
+using namespace me::serce::franky;
 
 Profiler Profiler::_instance;
 
@@ -295,13 +300,92 @@ void Profiler::init(int port) {
         error("connecting");
     }
 
-    int n;
-    char buffer[256] = "Hello";
+    while (true) {
+        Request request;
+        readRequest(&request);
 
-    n = write(sockfd, buffer, strlen(buffer));
-    if (n < 0)
-        error("ERROR writing to socket");
-    close(sockfd);
+        switch (request.type()) {
+            case Request_RequestType_START_PROFILING:
+                start(DEFAULT_INTERVAL);
+                break;
+            case Request_RequestType_STOP_PROFILING:
+                stop();
+                writeResult();
+                break;
+            case Request_RequestType_DETACH:
+                close(sockfd);
+                return;
+            default:
+                continue;
+        }
+    }
 }
+
+void Profiler::readRequest(Request *message) {
+    using namespace google::protobuf;
+    using namespace google::protobuf::io;
+
+    // We create a new coded stream for each message.  Don't worry, this is fast,
+    // and it makes sure the 64MB total size limit is imposed per-message rather
+    // than on the whole stream.  (See the CodedInputStream interface for more
+    // info on this limit.)
+    FileInputStream raw_input(sockfd);
+    google::protobuf::io::CodedInputStream input(&raw_input);
+
+    // Read the size.
+    uint32_t size;
+    if (!input.ReadVarint32(&size)) {
+        error("Error reading variint32");
+    }
+
+    // Tell the stream not to read beyond that size.
+    google::protobuf::io::CodedInputStream::Limit limit = input.PushLimit(size);
+
+    // Parse the message.
+    if (!message->MergeFromCodedStream(&input)) {
+        error("Error paring message 1");
+    }
+    if (!input.ConsumedEntireMessage()) {
+        error("Error paring message 2");
+    }
+}
+
+void sendResponse(int sockfd, me::serce::franky::Response &message) {
+    using namespace google::protobuf;
+    using namespace google::protobuf::io;
+
+    // We create a new coded stream for each message.  Don't worry, this is fast.
+    FileOutputStream raw_output(sockfd);
+    google::protobuf::io::CodedOutputStream output(&raw_output);
+
+    // Write the size.
+    const int size = message.ByteSize();
+    output.WriteVarint32((uint32) size);
+
+    uint8_t *buffer = output.GetDirectBufferForNBytesAndAdvance(size);
+    if (buffer != NULL) {
+        // Optimization:  The message fits in one buffer, so use the faster
+        // direct-to-array serialization path.
+        message.SerializeWithCachedSizesToArray(buffer);
+    } else {
+        // Slightly-slower path when the message is multiple buffers.
+        message.SerializeWithCachedSizes(&output);
+        if (output.HadError()) {
+            error("HAD ERROR");
+        }
+    }
+}
+
+void Profiler::writeResult() {
+    Response response;
+    response.set_calls_total(_calls_total);
+    response.set_calls_non_java(_calls_non_java);
+    response.set_calls_gc(_calls_gc);
+    response.set_calls_deopt(_calls_deopt);
+    response.set_calls_unknown(_calls_unknown);
+
+    sendResponse(sockfd, response);
+}
+
 
 
