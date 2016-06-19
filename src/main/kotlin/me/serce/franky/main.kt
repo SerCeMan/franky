@@ -27,7 +27,7 @@ interface Profiler {
 
 
 fun main(args: Array<String>) {
-    val vm = VirtualMachine.attach("31660")
+    val vm = VirtualMachine.attach("32530")
     val port = 4897
     thread {
         listen(port)
@@ -58,7 +58,7 @@ fun listen(port: Int) {
                         }.build())
                         println("START PROFILING")
 
-                        Thread.sleep(5000L)
+                        Thread.sleep(2000L)
                         chan.writeAndFlush(Request.newBuilder().apply {
                             type = Request.RequestType.STOP_PROFILING
                         }.build())

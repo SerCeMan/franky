@@ -23,7 +23,6 @@
 #include <sys/time.h>
 
 #include <unistd.h>
-#include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
@@ -175,11 +174,11 @@ void Profiler::recordSample(void *ucontext) {
 }
 
 void Profiler::setTimer(long sec, long usec) {
-    bool enabled = sec | usec;
+    bool enabled = sec != 0 || usec != 0;
 
     struct sigaction sa;
     sa.sa_handler = enabled ? NULL : SIG_IGN;
-    sa.sa_sigaction = enabled ? sigprofHandler : NULL;
+    sa.sa_sigaction = enabled ? &sigprofHandler : NULL;
     sa.sa_flags = SA_RESTART | SA_SIGINFO;
     sigemptyset(&sa.sa_mask);
     sigaction(SIGPROF, &sa, NULL);
@@ -206,26 +205,6 @@ void Profiler::stop() {
     _running = false;
 
     setTimer(0, 0);
-}
-
-void Profiler::summary(std::ostream &out) {
-    float percent = 100.0f / _calls_total;
-    char buf[256];
-    sprintf(buf,
-            "--- Execution profile ---\n"
-                    "Total:    %d\n"
-                    "Non-Java: %d (%.2f%%)\n"
-                    "GC:       %d (%.2f%%)\n"
-                    "Deopt:    %d (%.2f%%)\n"
-                    "Unknown:  %d (%.2f%%)\n"
-                    "\n",
-            _calls_total,
-            _calls_non_java, _calls_non_java * percent,
-            _calls_gc, _calls_gc * percent,
-            _calls_deopt, _calls_deopt * percent,
-            _calls_unknown, _calls_unknown * percent
-    );
-    out << buf;
 }
 
 void Profiler::dumpTraces(std::ostream &out, int max_traces) {
@@ -325,10 +304,6 @@ void Profiler::readRequest(Request *message) {
     using namespace google::protobuf;
     using namespace google::protobuf::io;
 
-    // We create a new coded stream for each message.  Don't worry, this is fast,
-    // and it makes sure the 64MB total size limit is imposed per-message rather
-    // than on the whole stream.  (See the CodedInputStream interface for more
-    // info on this limit.)
     FileInputStream raw_input(sockfd);
     google::protobuf::io::CodedInputStream input(&raw_input);
 
@@ -339,7 +314,7 @@ void Profiler::readRequest(Request *message) {
     }
 
     // Tell the stream not to read beyond that size.
-    google::protobuf::io::CodedInputStream::Limit limit = input.PushLimit(size);
+    input.PushLimit(size);
 
     // Parse the message.
     if (!message->MergeFromCodedStream(&input)) {
@@ -354,7 +329,6 @@ void sendResponse(int sockfd, me::serce::franky::Response &message) {
     using namespace google::protobuf;
     using namespace google::protobuf::io;
 
-    // We create a new coded stream for each message.  Don't worry, this is fast.
     FileOutputStream raw_output(sockfd);
     google::protobuf::io::CodedOutputStream output(&raw_output);
 

@@ -123,13 +123,9 @@ public:
 
     bool is_running() { return _running; }
 
-    int samples() { return _calls_total; }
-
     void start(long interval);
 
     void stop();
-
-    void summary(std::ostream &out);
 
     void dumpTraces(std::ostream &out, int max_traces);
 
