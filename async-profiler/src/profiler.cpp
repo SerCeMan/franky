@@ -350,15 +350,68 @@ void sendResponse(int sockfd, me::serce::franky::Response &message) {
     }
 }
 
+MethodInfo *createMethodInfo(jmethodID jmethod) {
+    MethodName mn(jmethod);
+    MethodInfo *methodInfo = new MethodInfo();
+    methodInfo->set_name(mn.name());
+    methodInfo->set_holder(mn.holder());
+    methodInfo->set_sig(mn.signature());
+    return methodInfo;
+}
+
 void Profiler::writeResult() {
     Response response;
-    response.set_calls_total(_calls_total);
-    response.set_calls_non_java(_calls_non_java);
-    response.set_calls_gc(_calls_gc);
-    response.set_calls_deopt(_calls_deopt);
-    response.set_calls_unknown(_calls_unknown);
+    ProfilingInfo *info = new ProfilingInfo();
 
+    info->set_calls_total(_calls_total);
+    info->set_calls_non_java(_calls_non_java);
+    info->set_calls_gc(_calls_gc);
+    info->set_calls_deopt(_calls_deopt);
+    info->set_calls_unknown(_calls_unknown);
+
+    saveMethods(info);
+    saveCallTraces(info);
+
+    response.set_allocated_prof_info(info);
     sendResponse(sockfd, response);
+}
+
+void Profiler::saveCallTraces(ProfilingInfo *info) {
+    qsort(_traces, MAX_CALLTRACES, sizeof(CallTraceSample), CallTraceSample::comparator);
+    int max_traces = MAX_CALLTRACES;
+    for (int i = 0; i < max_traces; i++) {
+        const CallTraceSample &trace = _traces[i];
+        int samples = trace._call_count;
+        if (samples == 0) break;
+
+        CallTraceSampleInfo *sampleInfo = info->add_samples();
+        sampleInfo->set_call_count(trace._call_count);
+        sampleInfo->set_num_frames(trace._num_frames);
+
+        for (int j = 0; j < trace._num_frames; j++) {
+            const ASGCT_CallFrame *frame = &trace._frames[j];
+            if (frame->method_id != NULL) {
+                CallFrame *callFrame = sampleInfo->add_frame();
+                callFrame->set_bci(frame->bci);
+                MethodInfo *methodInfo = createMethodInfo(frame->method_id);
+                callFrame->set_allocated_method(methodInfo);
+            }
+        }
+    }
+}
+
+void Profiler::saveMethods(ProfilingInfo *info) {
+    qsort(_methods, MAX_CALLTRACES, sizeof(MethodSample), MethodSample::comparator);
+    for (int i = 0; i < MAX_CALLTRACES; i++) {
+        int samples = _methods[i]._call_count;
+        if (samples == 0) break;
+
+        jmethodID jmethod = _methods[i]._method;
+        MethodSampleInfo *sampleInfo = info->add_methods();
+        sampleInfo->set_call_count(samples);
+        MethodInfo *methodInfo = createMethodInfo(jmethod);
+        sampleInfo->set_allocated_method(methodInfo);
+    }
 }
 
 

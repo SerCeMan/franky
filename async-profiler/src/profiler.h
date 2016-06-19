@@ -116,7 +116,12 @@ private:
 
     void writeResult();
 
+    void saveMethods(me::serce::franky::ProfilingInfo *info);
+
+    void saveCallTraces(me::serce::franky::ProfilingInfo *info);
+
 public:
+
     static Profiler _instance;
 
     Profiler() : _running(false) { }

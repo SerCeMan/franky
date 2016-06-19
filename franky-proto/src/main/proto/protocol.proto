@@ -1,12 +1,44 @@
 syntax = "proto2";
 package me.serce.franky;
 
-message Response {
+message MethodInfo {
+    required string name = 2;
+    required string sig = 3;
+    required string holder = 4;
+}
+
+message CallFrame {
+    optional int32 bci = 1;
+    optional MethodInfo method = 2;
+}
+
+message CallTraceSampleInfo {
+    required int32 call_count = 1;
+    required int32 num_frames = 2;
+    repeated CallFrame frame = 3;
+}
+
+message MethodSampleInfo {
+    required int32 call_count = 1;
+    required MethodInfo method = 2;
+}
+
+message ProfilingInfo {
     required int32 calls_total = 1;
     required int32 calls_non_java = 2;
     required int32 calls_gc = 3;
     required int32 calls_deopt = 4;
     required int32 calls_unknown = 5;
+    repeated MethodSampleInfo methods = 6;
+    repeated CallTraceSampleInfo samples = 7;
+}
+
+message Response {
+    enum ResponseType {
+        PROF_INFO = 0;
+    }
+
+    optional ProfilingInfo prof_info = 1;
 }
 
 message Request {

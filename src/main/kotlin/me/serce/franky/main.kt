@@ -27,7 +27,7 @@ interface Profiler {
 
 
 fun main(args: Array<String>) {
-    val vm = VirtualMachine.attach("32530")
+    val vm = VirtualMachine.attach("6999")
     val port = 4897
     thread {
         listen(port)
