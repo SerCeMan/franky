@@ -260,6 +260,31 @@ void error(const char *msg) {
 }
 
 
+void sendResponse(int sockfd, me::serce::franky::Response &message) {
+    using namespace google::protobuf;
+    using namespace google::protobuf::io;
+
+    FileOutputStream raw_output(sockfd);
+    google::protobuf::io::CodedOutputStream output(&raw_output);
+
+    // Write the size.
+    const int size = message.ByteSize();
+    output.WriteVarint32((uint32) size);
+
+    uint8_t *buffer = output.GetDirectBufferForNBytesAndAdvance(size);
+    if (buffer != NULL) {
+        // Optimization:  The message fits in one buffer, so use the faster
+        // direct-to-array serialization path.
+        message.SerializeWithCachedSizesToArray(buffer);
+    } else {
+        // Slightly-slower path when the message is multiple buffers.
+        message.SerializeWithCachedSizes(&output);
+        if (output.HadError()) {
+            error("HAD ERROR");
+        }
+    }
+}
+
 void Profiler::init(int port) {
     portno = (uint16_t) port;
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -279,6 +304,10 @@ void Profiler::init(int port) {
         error("connecting");
     }
 
+    Response response;
+    response.set_id(getpid());
+    response.set_type(Response_ResponseType_INIT);
+    sendResponse(sockfd, response);
     while (true) {
         Request request;
         readRequest(&request);
@@ -325,31 +354,6 @@ void Profiler::readRequest(Request *message) {
     }
 }
 
-void sendResponse(int sockfd, me::serce::franky::Response &message) {
-    using namespace google::protobuf;
-    using namespace google::protobuf::io;
-
-    FileOutputStream raw_output(sockfd);
-    google::protobuf::io::CodedOutputStream output(&raw_output);
-
-    // Write the size.
-    const int size = message.ByteSize();
-    output.WriteVarint32((uint32) size);
-
-    uint8_t *buffer = output.GetDirectBufferForNBytesAndAdvance(size);
-    if (buffer != NULL) {
-        // Optimization:  The message fits in one buffer, so use the faster
-        // direct-to-array serialization path.
-        message.SerializeWithCachedSizesToArray(buffer);
-    } else {
-        // Slightly-slower path when the message is multiple buffers.
-        message.SerializeWithCachedSizes(&output);
-        if (output.HadError()) {
-            error("HAD ERROR");
-        }
-    }
-}
-
 MethodInfo *createMethodInfo(jmethodID jmethod) {
     MethodName mn(jmethod);
     MethodInfo *methodInfo = new MethodInfo();
@@ -372,6 +376,8 @@ void Profiler::writeResult() {
     saveMethods(info);
     saveCallTraces(info);
 
+    response.set_id(getpid());
+    response.set_type(Response_ResponseType_PROF_INFO);
     response.set_allocated_prof_info(info);
     sendResponse(sockfd, response);
 }

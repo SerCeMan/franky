@@ -15,14 +15,7 @@
     ]]>
     </change-notes>
 
-    <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/build_number_ranges.html for description -->
     <idea-version since-build="141.0"/>
-
-    <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/plugin_compatibility.html
-         on how to target different products -->
-    <!-- uncomment to enable plugin in all products
-    <depends>com.intellij.modules.lang</depends>
-    -->
 
     <application-components>
         <component>
@@ -40,9 +33,12 @@
 
         <applicationService
                 serviceInterface="me.serce.franky.JVMAttachService"
-                serviceImplementation="me.serce.franky.JVMAttachService">
-        </applicationService>
-        <!-- Add your extensions here -->
+                serviceImplementation="me.serce.franky.JVMAttachService"/>
+
+        <applicationService
+                serviceInterface="me.serce.franky.JVMRemoteService"
+                serviceImplementation="me.serce.franky.JVMRemoteService"/>
+
     </extensions>
 
 </idea-plugin>

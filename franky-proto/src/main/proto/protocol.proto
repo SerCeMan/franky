@@ -35,10 +35,13 @@ message ProfilingInfo {
 
 message Response {
     enum ResponseType {
-        PROF_INFO = 0;
+        INIT = 0;
+        PROF_INFO = 1;
     }
 
-    optional ProfilingInfo prof_info = 1;
+    required int32 id = 1;
+    required ResponseType type = 2;
+    optional ProfilingInfo prof_info = 3;
 }
 
 message Request {

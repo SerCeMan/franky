@@ -3,6 +3,7 @@ package me.serce.franky
 import com.intellij.openapi.components.ApplicationComponent
 import com.sun.tools.attach.VirtualMachine
 import io.netty.bootstrap.ServerBootstrap
+import io.netty.channel.Channel
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInitializer
 import io.netty.channel.SimpleChannelInboundHandler
@@ -13,67 +14,69 @@ import io.netty.handler.codec.protobuf.ProtobufDecoder
 import io.netty.handler.codec.protobuf.ProtobufEncoder
 import io.netty.handler.codec.protobuf.ProtobufVarint32FrameDecoder
 import io.netty.handler.codec.protobuf.ProtobufVarint32LengthFieldPrepender
+import me.serce.franky.Protocol.Response.ResponseType
+import me.serce.franky.util.Lifetime
+import org.jetbrains.io.addChannelListener
 import kotlin.concurrent.thread
 
+const val FRANKY_PORT: Int = 4897;
 
-class FrankyComponent : ApplicationComponent {
-    override fun getComponentName(): String = "Franky Profiler"
+class FrankyComponent(val jvmRemoteService: JVMRemoteService) : ApplicationComponent {
+    val lifetime = Lifetime()
 
-    override fun initComponent() {
-        /*val vm = VirtualMachine.attach("19037")
-        val port = 4897
-        thread {
-            listen(port)
+    private @Volatile var ch: Channel? = null
+
+    init {
+        lifetime += {
+            ch?.close()
         }
-        Thread.sleep(200L)
-        thread {
-            vm.loadAgentPath("/home/serce/git/franky/lib/libfrankyagent.so", "$port")
-        }*/
     }
 
-    fun listen(port: Int) {
+
+    override fun getComponentName(): String = "Franky Profiler"
+    override fun initComponent() = listen(FRANKY_PORT)
+
+    private fun listen(port: Int) {
         val bossGroup = NioEventLoopGroup(1)
         val workerGroup = NioEventLoopGroup()
-        try {
-            val b = ServerBootstrap()
-            b.group(bossGroup, workerGroup).channel(NioServerSocketChannel::class.java).childHandler(object : ChannelInitializer<SocketChannel>() {
-                override fun initChannel(ch: SocketChannel) {
-                    val p = ch.pipeline()
-                    p.addLast(ProtobufVarint32FrameDecoder())
-                    p.addLast(ProtobufDecoder(Protocol.Response.getDefaultInstance()))
 
-                    p.addLast(ProtobufVarint32LengthFieldPrepender())
-                    p.addLast(ProtobufEncoder())
+        val b = ServerBootstrap()
+                .group(bossGroup, workerGroup)
+                .channel(NioServerSocketChannel::class.java)
+                .childHandler(object : ChannelInitializer<SocketChannel>() {
+                    override fun initChannel(ch: SocketChannel) {
+                        val p = ch.pipeline()
+                        p.addLast(ProtobufVarint32FrameDecoder())
+                        p.addLast(ProtobufDecoder(Protocol.Response.getDefaultInstance()))
 
-                    p.addLast(object : SimpleChannelInboundHandler<Protocol.Response>() {
-                        override fun channelActive(ctx: ChannelHandlerContext) {
-                            val chan = ctx.channel()
-                            chan.writeAndFlush(Protocol.Request.newBuilder().apply {
-                                type = Protocol.Request.RequestType.START_PROFILING
-                            }.build())
-                            println("START PROFILING")
+                        p.addLast(ProtobufVarint32LengthFieldPrepender())
+                        p.addLast(ProtobufEncoder())
 
-                            Thread.sleep(2000L)
-                            chan.writeAndFlush(Protocol.Request.newBuilder().apply {
-                                type = Protocol.Request.RequestType.STOP_PROFILING
-                            }.build())
-                            println("STOP PROFILING")
-                        }
+                        p.addLast(object : SimpleChannelInboundHandler<Protocol.Response>() {
+                            override fun channelActive(ctx: ChannelHandlerContext) {
+                                println("CHAN CONNECTED")
+                            }
 
-                        override fun channelRead0(ctx: ChannelHandlerContext, msg: Protocol.Response) {
-                            println("Revieved, " + msg)
-                            ctx.channel().write(Protocol.Request.newBuilder().apply {
-                                type = Protocol.Request.RequestType.DETACH
-                            }.build())
-                        }
-                    })
-                }
-            })
+                            override fun channelRead0(ctx: ChannelHandlerContext, msg: Protocol.Response) {
+                                println("Revieved, " + msg)
+                                when (msg.type) {
+                                    ResponseType.INIT -> jvmRemoteService.setChan(msg.id, ctx.channel())
+                                    ResponseType.PROF_INFO -> jvmRemoteService.result(msg.id, msg);
+                                    else -> throw RuntimeException("Unknown message $msg")
+                                }
+                            }
+                        })
+                    }
+                })
 
-            b.bind(port).sync().channel().closeFuture().sync()
-        } finally {
-            bossGroup.shutdownGracefully()
-            workerGroup.shutdownGracefully()
+        b.bind(port).addChannelListener {
+            val channel = it.channel()
+            ch = channel
+
+            channel.closeFuture().addChannelListener {
+                bossGroup.shutdownGracefully()
+                workerGroup.shutdownGracefully()
+            }
         }
     }
 

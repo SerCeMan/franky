@@ -5,6 +5,8 @@ import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
 import me.serce.franky.AttachableJVM
 import me.serce.franky.JVMAttachService
+import me.serce.franky.Protocol
+import me.serce.franky.Protocol.Response
 import java.awt.Component
 import java.awt.FlowLayout
 import javax.swing.*
@@ -40,9 +42,6 @@ class FrankyToolWindowFactory(val jvmAttachService: JVMAttachService) : ToolWind
 
         val connectButton = JButton().apply {
             text = "Connect"
-            addActionListener {
-                val session = jvmAttachService.connect(jvmsList.selectedItem as AttachableJVM)
-            }
         }
 
         val jmvsPanel = JPanel().apply {
@@ -50,9 +49,45 @@ class FrankyToolWindowFactory(val jvmAttachService: JVMAttachService) : ToolWind
 
             add(refreshButton)
             add(jvmsList)
+            add(connectButton)
         }
+
+        val frankyPanel = JPanel()
+
+        frankyPanel.add(jmvsPanel)
+
+
+        connectButton.addActionListener {
+            val session = jvmAttachService.connect(jvmsList.selectedItem as AttachableJVM)
+
+            val resultArea = JTextArea()
+            session.addResultListener { res: Response ->
+                println("RESULT $res")
+                resultArea.text = res.toString()
+            }
+
+
+            val startProfilingButton = JButton("Start profiling")
+            startProfilingButton.addActionListener {
+                session.startProfiling()
+            }
+
+            val stopProfilingButton = JButton("Stop profiling")
+            stopProfilingButton.addActionListener {
+                session.stopProfiling()
+            }
+
+            frankyPanel.add(JPanel().apply {
+                layout = FlowLayout()
+
+                add(startProfilingButton)
+                add(stopProfilingButton)
+                add(resultArea)
+            })
+        }
+
         refreshJvmsList(jvmsList)
-        return jmvsPanel
+        return frankyPanel
     }
 
     private fun refreshJvmsList(jvmsList: JComboBox<AttachableJVM>) {
