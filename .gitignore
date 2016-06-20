@@ -4,6 +4,8 @@
 /out/
 *.iml
 modules.xml
+classes/
+.sandbox/
 
 ### Java ###
 *.class

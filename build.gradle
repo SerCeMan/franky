@@ -1,42 +1,13 @@
 buildscript {
-    ext.kotlin_version = '1.0.2'
     repositories {
         jcenter()
-        maven { url 'http://dl.bintray.com/jetbrains/intellij-plugin-service' }
-    }
-    dependencies {
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
     }
 }
-
-plugins {
-    id "org.jetbrains.intellij" version "0.1.8"
-}
-
-intellij {
-    pluginName 'franky'
-
-    version '2016.1.2'
-    downloadSources Boolean.valueOf(true)
-    // FIXME: hack to support both IDEA 15 and IDEA 16.
-    // See https://github.com/intellij-rust/intellij-rust/issues/243
-
-//    publish {
-//        username publishUsername
-//        password publishPassword
-//        pluginId '8182'
-//        channel publishChannel
-//    }
-    sandboxDirectory project.rootDir.canonicalPath + "/.sandbox"
-}
-
-
 
 group 'me.serce'
 version '1.0-SNAPSHOT'
 
 apply plugin: 'java'
-apply plugin: 'kotlin'
 
 sourceCompatibility = 1.8
 
@@ -45,11 +16,5 @@ repositories {
 }
 
 dependencies {
-    compile project(':franky-proto')
-
-    compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
-
-    compile 'io.netty:netty-all:4.1.1.Final'
-
     testCompile group: 'junit', name: 'junit', version: '4.11'
 }
