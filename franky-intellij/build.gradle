@@ -1,10 +1,9 @@
 buildscript {
-    ext.kotlin_version = '1.0.2'
     repositories {
         jcenter()
     }
     dependencies {
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion"
     }
 }
 
@@ -42,7 +41,7 @@ dependencies {
 
     compile files(org.gradle.internal.jvm.Jvm.current().toolsJar)
     compile 'io.netty:netty-all:4.1.1.Final'
-    compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+    compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion"
 
     testCompile group: 'junit', name: 'junit', version: '4.11'
 }

@@ -17,15 +17,6 @@ import me.serce.franky.Protocol.Response
 import kotlin.concurrent.thread
 
 
-interface Profiler {
-    fun start(interval: Int)
-    fun stop()
-    fun getSamples(): Int
-    fun dumpTraces(maxTraces: Int): String
-    fun dumpMethods(): String
-}
-
-
 fun main(args: Array<String>) {
     val vm = VirtualMachine.attach("6999")
     val port = 4897
@@ -33,7 +24,6 @@ fun main(args: Array<String>) {
         listen(port)
     }
     Thread.sleep(200L)
-    vm.loadAgentPath("/home/serce/git/franky/lib/libfrankyagent.so", "$port")
 }
 
 fun listen(port: Int) {
