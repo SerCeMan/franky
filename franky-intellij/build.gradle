@@ -41,6 +41,7 @@ dependencies {
 
     compile files(org.gradle.internal.jvm.Jvm.current().toolsJar)
     compile 'io.netty:netty-all:4.1.1.Final'
+    compile 'io.reactivex:rxkotlin:0.60.0'
     compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion"
 
     testCompile group: 'junit', name: 'junit', version: '4.11'

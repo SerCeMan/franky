@@ -1,7 +1,6 @@
 package me.serce.franky
 
 import com.intellij.openapi.components.ApplicationComponent
-import com.sun.tools.attach.VirtualMachine
 import io.netty.bootstrap.ServerBootstrap
 import io.netty.channel.Channel
 import io.netty.channel.ChannelHandlerContext
@@ -17,7 +16,6 @@ import io.netty.handler.codec.protobuf.ProtobufVarint32LengthFieldPrepender
 import me.serce.franky.Protocol.Response.ResponseType
 import me.serce.franky.util.Lifetime
 import org.jetbrains.io.addChannelListener
-import kotlin.concurrent.thread
 
 const val FRANKY_PORT: Int = 4897;
 
@@ -81,5 +79,5 @@ class FrankyComponent(val jvmRemoteService: JVMRemoteService) : ApplicationCompo
     }
 
 
-    override fun disposeComponent() = Unit
+    override fun disposeComponent() = lifetime.terminate()
 }
