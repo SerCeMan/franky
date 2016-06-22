@@ -3,22 +3,20 @@ package me.serce.franky.ui
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
-import com.intellij.util.ui.UIUtil
+import com.intellij.util.ui.components.BorderLayoutPanel
 import me.serce.franky.AttachableJVM
 import me.serce.franky.JVMAttachService
-import me.serce.franky.Protocol.Response
+import me.serce.franky.Protocol
 import me.serce.franky.util.Lifetime
 import me.serce.franky.util.create
 import me.serce.franky.util.subscribeUI
 import rx.Observable
-import rx.Single
-import rx.functions.Action1
 import rx.lang.kotlin.AsyncSubject
 import rx.lang.kotlin.PublishSubject
 import rx.schedulers.Schedulers
 import rx.subjects.PublishSubject
 import java.awt.Component
-import java.awt.FlowLayout
+import java.awt.Dimension
 import java.util.concurrent.TimeUnit
 import javax.swing.*
 
@@ -26,107 +24,31 @@ interface HasComponent {
     fun createComponent(): JComponent
 }
 
-interface ViewModel : HasComponent
+interface Controller : HasComponent
 interface View : HasComponent
 
 
-class FrankyToolWindowFactory(val jvmAttachService: JVMAttachService) : ToolWindowFactory {
+class FrankyToolWindowFactory() : ToolWindowFactory {
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
-        val frankyPanelController = FrankyPanelController(jvmAttachService)
+        val frankyPanelController = FrankyPanelController()
         val frankyPanel = frankyPanelController.createComponent()
         toolWindow.component.add(frankyPanel)
     }
-
-    private fun createFrankyPanel(): JPanel {
-        val jvmsList = JComboBox<AttachableJVM>().apply {
-            renderer = object : DefaultListCellRenderer() {
-                override fun getListCellRendererComponent(list: JList<*>?, value: Any?, index: Int, isSelected: Boolean, cellHasFocus: Boolean): Component? {
-                    return super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus).apply {
-                        value as AttachableJVM
-                        text = "${value.id} ${value.name.substring(0, Math.min(value.name.length, 20))}"
-                    }
-                }
-            }
-
-            addActionListener {
-                println("Hello! ${selectedItem}")
-            }
-        }
-
-        val refreshButton = JButton().apply {
-            text = "Refresh"
-            addActionListener {
-                refreshJvmsList(jvmsList)
-            }
-        }
-
-        val connectButton = JButton().apply {
-            text = "Connect"
-        }
-
-        val jmvsPanel = JPanel().apply {
-            layout = FlowLayout()
-
-            add(refreshButton)
-            add(jvmsList)
-            add(connectButton)
-        }
-
-        val frankyPanel = JPanel()
-
-        frankyPanel.add(jmvsPanel)
-
-
-        connectButton.addActionListener {
-            val session = jvmAttachService.connect(jvmsList.selectedItem as AttachableJVM)
-
-            val resultArea = JTextArea()
-            session.addResultListener { res: Response ->
-                println("RESULT $res")
-                resultArea.text = res.toString()
-            }
-
-
-            val startProfilingButton = JButton("Start profiling")
-            startProfilingButton.addActionListener {
-                session.startProfiling()
-            }
-
-            val stopProfilingButton = JButton("Stop profiling")
-            stopProfilingButton.addActionListener {
-                session.stopProfiling()
-            }
-
-            frankyPanel.add(JPanel().apply {
-                layout = FlowLayout()
-
-                add(startProfilingButton)
-                add(stopProfilingButton)
-                add(resultArea)
-            })
-        }
-
-        refreshJvmsList(jvmsList)
-        return frankyPanel
-    }
-
-    private fun refreshJvmsList(jvmsList: JComboBox<AttachableJVM>) {
-        jvmsList.removeAllItems();
-        jvmAttachService.attachableJVMs().forEach { jvmsList.addItem(it) }
-    }
 }
 
-class FrankyPanelController(val jvmAttachService: JVMAttachService) {
+class FrankyPanelController() : Controller {
 
     val lifetime: Lifetime = Lifetime()
 
-    fun createComponent(): JComponent {
-        val jvmsListController: JvmsListViewModel = JvmsListViewModelImpl(lifetime.create())
-        val profilingTabsController = ProfilingTabsController(lifetime.create(), jvmsListController.connectJvmPublisher)
+    override fun createComponent(): JComponent {
+        val jvmsListController: JvmsListViewModel = JvmsListViewController(lifetime.create())
+        val profilingTabsController = JvmTabsController(lifetime.create(), jvmsListController.connectJvmPublisher)
 
-        return JPanel().apply {
-            add(jvmsListController.createComponent())
-//            add(profilingTabsController.createComponent())
+        return BorderLayoutPanel().apply {
+            addToLeft(jvmsListController.createComponent()).apply {
+                preferredSize = Dimension(150, 0)
+            }
+            addToRight(profilingTabsController.createComponent())
         }
     }
 }
@@ -135,7 +57,7 @@ interface JvmsListViewModel : HasComponent {
     val connectJvmPublisher: Observable<AttachableJVM>
 }
 
-class JvmsListViewModelImpl(val lifetime: Lifetime) : JvmsListViewModel {
+class JvmsListViewController(val lifetime: Lifetime) : JvmsListViewModel {
     class JvmsListState {
         val jvms = PublishSubject<List<AttachableJVM>>()
         val selected = PublishSubject<AttachableJVM?>()
@@ -156,6 +78,7 @@ class JvmsListViewModelImpl(val lifetime: Lifetime) : JvmsListViewModel {
 
         init {
             // todo lifetime
+            lifetime
             Observable.interval(0, 5, TimeUnit.SECONDS, Schedulers.io())
                     .map { attachService.attachableJVMs() }
                     .subscribe {
@@ -212,14 +135,87 @@ class JvmsListViewModelImpl(val lifetime: Lifetime) : JvmsListViewModel {
 }
 
 
-class ProfilingTabsController(lifetime: Lifetime, jvmPublisher: Observable<AttachableJVM>) {
+class JvmTabsController(val lifetime: Lifetime, jvmPublisher: Observable<AttachableJVM>) {
+    val view = JvmTabsView()
+
     init {
-        jvmPublisher.subscribe {
-            println("CONNECT $it")
+        jvmPublisher.subscribe { vm ->
+            val tabController = JvmTabController(lifetime.create(), vm)
+            view.addTab(vm.id, tabController.createComponent())
         }
     }
 
-    fun createComponent(): Component {
-        throw UnsupportedOperationException("not implemented") //To change body of created functions use File | Settings | File Templates.
+    fun createComponent(): Component = view.createComponent()
+
+    class JvmTabsView() : View {
+        val tabs = JTabbedPane()
+
+        fun addTab(name: String, comp: JComponent) {
+            tabs.addTab(name, comp)
+        }
+
+        override fun createComponent() = tabs
     }
+}
+
+class JvmTabController(lifetime: Lifetime, vm: AttachableJVM) : Controller {
+    class JvmTabState {
+        val isProfilingStarted = PublishSubject<Boolean>()
+        val profilingResult = PublishSubject<Protocol.Response>()
+    }
+
+    val state = JvmTabState()
+    val view = JvmTabView(state)
+    val model = JvmTabModel(state, vm)
+
+    class JvmTabModel(state: JvmTabState, vm: AttachableJVM) {
+        val jvmService = JVMAttachService.getInstance()
+        val session = jvmService.connect(vm)
+
+        init {
+            state.isProfilingStarted.subscribeUI {
+                when {
+                    it -> session.startProfiling()
+                    else -> session.stopProfiling()
+                }
+            }
+            session.addResultListener { response ->
+                state.profilingResult.onNext(response)
+            }
+        }
+    }
+
+
+    class JvmTabView(val state: JvmTabState) : View {
+        val startButton = JButton("Start profiling")
+        val stopButton = JButton().apply {
+            text = "Stop profiling"
+            isEnabled = false
+        }
+        val textAres = JTextArea()
+
+        init {
+            state.isProfilingStarted.subscribeUI {
+                startButton.isEnabled = !it
+                stopButton.isEnabled = it
+            }
+
+            startButton.addActionListener {
+                state.isProfilingStarted.onNext(true)
+            }
+            stopButton.addActionListener { state.isProfilingStarted.onNext(false) }
+
+            state.profilingResult.subscribeUI {
+                textAres.append(it.toString())
+            }
+        }
+
+        override fun createComponent() = JPanel().apply {
+            add(startButton)
+            add(stopButton)
+            add(textAres)
+        }
+    }
+
+    override fun createComponent() = view.createComponent()
 }

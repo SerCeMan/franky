@@ -1,6 +1,7 @@
 package me.serce.franky
 
 import com.intellij.openapi.components.ApplicationComponent
+import com.intellij.util.ui.UIUtil
 import io.netty.bootstrap.ServerBootstrap
 import io.netty.channel.Channel
 import io.netty.channel.ChannelHandlerContext
@@ -57,10 +58,13 @@ class FrankyComponent(val jvmRemoteService: JVMRemoteService) : ApplicationCompo
 
                             override fun channelRead0(ctx: ChannelHandlerContext, msg: Protocol.Response) {
                                 println("Revieved, " + msg)
-                                when (msg.type) {
-                                    ResponseType.INIT -> jvmRemoteService.setChan(msg.id, ctx.channel())
-                                    ResponseType.PROF_INFO -> jvmRemoteService.result(msg.id, msg);
-                                    else -> throw RuntimeException("Unknown message $msg")
+                                val channel = ctx.channel()
+                                UIUtil.invokeLaterIfNeeded {
+                                    when (msg.type) {
+                                        ResponseType.INIT -> jvmRemoteService.setChan(msg.id, channel)
+                                        ResponseType.PROF_INFO -> jvmRemoteService.result(msg.id, msg);
+                                        else -> throw RuntimeException("Unknown message $msg")
+                                    }
                                 }
                             }
                         })
