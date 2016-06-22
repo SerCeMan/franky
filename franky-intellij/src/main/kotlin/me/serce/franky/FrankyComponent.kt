@@ -15,6 +15,7 @@ import io.netty.handler.codec.protobuf.ProtobufEncoder
 import io.netty.handler.codec.protobuf.ProtobufVarint32FrameDecoder
 import io.netty.handler.codec.protobuf.ProtobufVarint32LengthFieldPrepender
 import me.serce.franky.Protocol.Response.ResponseType
+import me.serce.franky.jvm.JVMRemoteService
 import me.serce.franky.util.Lifetime
 import org.jetbrains.io.addChannelListener
 

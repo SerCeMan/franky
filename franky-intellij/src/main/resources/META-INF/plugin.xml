@@ -32,8 +32,8 @@
         </toolWindow>
 
         <applicationService
-                serviceInterface="me.serce.franky.JVMAttachService"
-                serviceImplementation="me.serce.franky.JVMAttachService"/>
+                serviceInterface="me.serce.franky.jvm.JVMAttachService"
+                serviceImplementation="me.serce.franky.jvm.JVMAttachService"/>
 
         <applicationService
                 serviceInterface="me.serce.franky.JVMRemoteService"
