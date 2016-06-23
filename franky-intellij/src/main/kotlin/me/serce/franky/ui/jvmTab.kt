@@ -92,7 +92,7 @@ private class JvmTabConntoller(state: JvmTabState, lifetime: Lifetime, vm: Attac
                 else -> session.stopProfiling()
             }
         }
-        session.addResultListener { response ->
+        session.profilingResult().subscribe { response ->
             state.profilingResult.onNext(response)
         }
     }

@@ -2,8 +2,11 @@ package me.serce.franky.jvm
 
 import io.netty.channel.Channel
 import me.serce.franky.Protocol
+import rx.Observable
 import rx.lang.kotlin.AsyncSubject
+import rx.lang.kotlin.PublishSubject
 import rx.subjects.AsyncSubject
+import rx.subjects.PublishSubject
 import java.util.*
 
 class JVMRemoteService {
@@ -19,20 +22,16 @@ class JVMRemoteService {
     }
 
     fun result(id: Int, msg: Protocol.Response) {
-        jvms[id]?.value?.onResponse?.invoke(msg)
+        jvms[id]?.value?.response?.onNext(msg)
     }
 }
 
 class JVMRemoteInstance(val chan: Channel) {
-    var onResponse: ((Protocol.Response) -> Unit)? = null;
+    val response: PublishSubject<Protocol.Response> = PublishSubject()
 
     fun send(req: Protocol.Request.RequestType) {
         chan.writeAndFlush(Protocol.Request.newBuilder()
                 .setType(req)
                 .build())
-    }
-
-    fun onResponse(onResponse: (Protocol.Response) -> Unit) {
-        this.onResponse = onResponse
     }
 }

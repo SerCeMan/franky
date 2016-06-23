@@ -36,8 +36,8 @@
                 serviceImplementation="me.serce.franky.jvm.JVMAttachService"/>
 
         <applicationService
-                serviceInterface="me.serce.franky.JVMRemoteService"
-                serviceImplementation="me.serce.franky.JVMRemoteService"/>
+                serviceInterface="me.serce.franky.jvm.JVMRemoteService"
+                serviceImplementation="me.serce.franky.jvm.JVMRemoteService"/>
 
     </extensions>
 

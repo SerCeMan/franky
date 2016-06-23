@@ -43,7 +43,8 @@ class JVMAttachService(val jvmRemoteService: JVMRemoteService) {
     }
 }
 
-class JVMSession(val remoteJVM: JVMRemoteInstance, val vm: VirtualMachine) : AutoCloseable {
+class JVMSession(private val remoteJVM: JVMRemoteInstance,
+                 private val vm: VirtualMachine) : AutoCloseable {
     private var isRunning = false;
 
     fun startProfiling() {
@@ -56,9 +57,7 @@ class JVMSession(val remoteJVM: JVMRemoteInstance, val vm: VirtualMachine) : Aut
         isRunning = false
     }
 
-    fun addResultListener(function: (Protocol.Response) -> Unit) {
-        remoteJVM.onResponse(function)
-    }
+    fun profilingResult() = remoteJVM.response
 
     override fun close() = vm.detach()
 }
