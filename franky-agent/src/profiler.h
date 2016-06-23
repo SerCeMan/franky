@@ -132,10 +132,6 @@ public:
 
     void stop();
 
-    void dumpTraces(std::ostream &out, int max_traces);
-
-    void dumpMethods(std::ostream &out);
-
     void recordSample(void *ucontext);
 
     void init(int port);

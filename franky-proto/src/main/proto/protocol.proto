@@ -3,7 +3,7 @@ package me.serce.franky;
 
 // methods
 message MethodInfo {
-    required int32 jMethodId = 1;
+    required int64 jMethodId = 1;
     required string name = 2;
     required string sig = 3;
     required string holder = 4;
@@ -13,7 +13,7 @@ message MethodInfo {
 
 message CallFrame {
     optional int32 bci = 1;
-    optional int32 jMethodId = 2;
+    optional int64 jMethodId = 2;
 }
 
 message CallTraceSampleInfo {
@@ -26,7 +26,7 @@ message CallTraceSampleInfo {
 
 message MethodSampleInfo {
     required int32 call_count = 1;
-    required int32 jMethodId = 2;
+    required int64 jMethodId = 2;
 }
 
 //

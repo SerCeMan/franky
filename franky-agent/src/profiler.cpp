@@ -207,52 +207,6 @@ void Profiler::stop() {
     setTimer(0, 0);
 }
 
-void Profiler::dumpTraces(std::ostream &out, int max_traces) {
-    if (_running) return;
-
-    float percent = 100.0f / _calls_total;
-    char buf[1024];
-
-    qsort(_traces, MAX_CALLTRACES, sizeof(CallTraceSample), CallTraceSample::comparator);
-    if (max_traces > MAX_CALLTRACES) max_traces = MAX_CALLTRACES;
-
-    for (int i = 0; i < max_traces; i++) {
-        int samples = _traces[i]._call_count;
-        if (samples == 0) break;
-
-        sprintf(buf, "Samples: %d (%.2f%%)\n", samples, samples * percent);
-        out << buf;
-
-        for (int j = 0; j < _traces[i]._num_frames; j++) {
-            ASGCT_CallFrame *frame = &_traces[i]._frames[j];
-            if (frame->method_id != NULL) {
-                MethodName mn(frame->method_id);
-                sprintf(buf, "  [%2d] %s.%s @%d\n", j, mn.holder(), mn.name(), frame->bci);
-                out << buf;
-            }
-        }
-        out << "\n";
-    }
-}
-
-void Profiler::dumpMethods(std::ostream &out) {
-    if (_running) return;
-
-    float percent = 100.0f / _calls_total;
-    char buf[1024];
-
-    qsort(_methods, MAX_CALLTRACES, sizeof(MethodSample), MethodSample::comparator);
-
-    for (int i = 0; i < MAX_CALLTRACES; i++) {
-        int samples = _methods[i]._call_count;
-        if (samples == 0) break;
-
-        MethodName mn(_methods[i]._method);
-        sprintf(buf, "%6d (%.2f%%) %s.%s\n", samples, samples * percent, mn.holder(), mn.name());
-        out << buf;
-    }
-}
-
 void error(const char *msg) {
     std::string res = std::string("ERROR") + std::string(msg);
     perror(res.c_str());
@@ -392,15 +346,16 @@ void Profiler::saveCallTraces(ProfilingInfo *info) {
 
         CallTraceSampleInfo *sampleInfo = info->add_samples();
         sampleInfo->set_call_count(trace._call_count);
-        sampleInfo->set_num_frames(trace._num_frames);
+//        sampleInfo->set_num_frames(trace._num_frames);
 
         for (int j = 0; j < trace._num_frames; j++) {
             const ASGCT_CallFrame *frame = &trace._frames[j];
             if (frame->method_id != NULL) {
                 CallFrame *callFrame = sampleInfo->add_frame();
                 callFrame->set_bci(frame->bci);
-                MethodInfo *methodInfo = createMethodInfo(frame->method_id);
-                callFrame->set_allocated_method(methodInfo);
+//                MethodInfo *methodInfo = createMethodInfo(frame->method_id);
+//                callFrame->set_allocated_method(methodInfo);
+                callFrame->set_jmethodid((long) frame->method_id);
             }
         }
     }
@@ -415,8 +370,9 @@ void Profiler::saveMethods(ProfilingInfo *info) {
         jmethodID jmethod = _methods[i]._method;
         MethodSampleInfo *sampleInfo = info->add_methods();
         sampleInfo->set_call_count(samples);
-        MethodInfo *methodInfo = createMethodInfo(jmethod);
-        sampleInfo->set_allocated_method(methodInfo);
+//        MethodInfo *methodInfo = createMethodInfo(jmethod);
+//        sampleInfo->set_allocated_method(methodInfo);
+        sampleInfo->set_jmethodid((long) jmethod);
     }
 }
 
