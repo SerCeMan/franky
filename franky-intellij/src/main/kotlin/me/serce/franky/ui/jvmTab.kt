@@ -1,13 +1,17 @@
 package me.serce.franky.ui
 
+import com.intellij.util.ui.components.BorderLayoutPanel
 import me.serce.franky.jvm.AttachableJVM
 import me.serce.franky.jvm.JVMAttachService
 import me.serce.franky.jvm.JVMSession
 import me.serce.franky.Protocol
+import me.serce.franky.ui.flame.FlameComponent
+import me.serce.franky.ui.flame.FlameTree
 import me.serce.franky.util.Lifetime
 import me.serce.franky.util.subscribeUI
 import rx.lang.kotlin.AsyncSubject
 import rx.lang.kotlin.PublishSubject
+import java.awt.FlowLayout
 import javax.swing.JButton
 import javax.swing.JPanel
 import javax.swing.JTextArea
@@ -27,12 +31,17 @@ private class JvmTabState {
 }
 
 private class JvmTabView(val state: JvmTabState) : View {
-    val tabPanel = JPanel()
+    val tabPanel = BorderLayoutPanel()
 
     val startButton = JButton("Start profiling")
     val stopButton = JButton().apply {
         text = "Stop profiling"
         isEnabled = false
+    }
+    val buttonsPanel = JPanel().apply {
+        layout = FlowLayout()
+        add(startButton)
+        add(stopButton)
     }
     val textAres = JTextArea()
 
@@ -44,10 +53,7 @@ private class JvmTabView(val state: JvmTabState) : View {
             tabPanel.apply {
                 remove(throbber)
 
-                add(startButton)
-                add(stopButton)
-                add(textAres)
-
+                addToTop(buttonsPanel)
                 revalidate()
             }
         }
@@ -62,8 +68,11 @@ private class JvmTabView(val state: JvmTabState) : View {
         }
         stopButton.addActionListener { state.isProfilingStarted.onNext(false) }
 
-        state.profilingResult.subscribeUI {
-            textAres.append(it.toString())
+        state.profilingResult.subscribeUI { result: Protocol.Response ->
+            tabPanel.apply {
+                val tree = FlameTree(result.profInfo.samplesList)
+                addToCenter(FlameComponent(tree))
+            }
         }
     }
 
