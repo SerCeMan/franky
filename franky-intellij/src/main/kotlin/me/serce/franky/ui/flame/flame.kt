@@ -1,15 +1,16 @@
 package me.serce.franky.ui.flame
 
 import com.google.protobuf.CodedInputStream
-import com.intellij.util.ui.UIUtil
 import me.serce.franky.Protocol
 import me.serce.franky.Protocol.CallTraceSampleInfo
 import java.awt.Dimension
 import java.awt.Graphics
-import java.awt.Rectangle
 import java.io.FileInputStream
 import java.util.*
-import javax.swing.*
+import javax.swing.JComponent
+import javax.swing.JFrame
+import javax.swing.JLabel
+import javax.swing.SwingUtilities
 
 fun CallTraceSampleInfo.validate() {
     if (frameList.isEmpty()) {
