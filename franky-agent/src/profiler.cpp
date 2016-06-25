@@ -29,6 +29,7 @@
 #include <proto/protocol.pb.h>
 #include <google/protobuf/io/coded_stream.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
+#include <unordered_set>
 
 #include "profiler.h"
 #include "vmEntry.h"
@@ -308,13 +309,16 @@ void Profiler::readRequest(Request *message) {
     }
 }
 
-MethodInfo *createMethodInfo(jmethodID jmethod) {
+MethodInfo *fillMethodInfo(MethodInfo *methodInfo, const jmethodID &jmethod) {
     MethodName mn(jmethod);
-    MethodInfo *methodInfo = new MethodInfo();
     methodInfo->set_name(mn.name());
     methodInfo->set_holder(mn.holder());
     methodInfo->set_sig(mn.signature());
     return methodInfo;
+}
+
+int64_t jMethodIdToId(jmethodID &jmethod) {
+    return (int64_t) jmethod;
 }
 
 void Profiler::writeResult() {
@@ -327,8 +331,10 @@ void Profiler::writeResult() {
     info->set_calls_deopt(_calls_deopt);
     info->set_calls_unknown(_calls_unknown);
 
-    saveMethods(info);
-    saveCallTraces(info);
+    std::unordered_set<jmethodID> methodIds;
+    saveMethods(info, methodIds);
+    saveCallTraces(info, methodIds);
+    saveMethodIds(info, methodIds);
 
     response.set_id(getpid());
     response.set_type(Response_ResponseType_PROF_INFO);
@@ -336,7 +342,7 @@ void Profiler::writeResult() {
     sendResponse(sockfd, response);
 }
 
-void Profiler::saveCallTraces(ProfilingInfo *info) {
+void Profiler::saveCallTraces(ProfilingInfo *info, std::unordered_set<jmethodID> &methods) {
     qsort(_traces, MAX_CALLTRACES, sizeof(CallTraceSample), CallTraceSample::comparator);
     int max_traces = MAX_CALLTRACES;
     for (int i = 0; i < max_traces; i++) {
@@ -346,22 +352,20 @@ void Profiler::saveCallTraces(ProfilingInfo *info) {
 
         CallTraceSampleInfo *sampleInfo = info->add_samples();
         sampleInfo->set_call_count(trace._call_count);
-//        sampleInfo->set_num_frames(trace._num_frames);
 
         for (int j = 0; j < trace._num_frames; j++) {
             const ASGCT_CallFrame *frame = &trace._frames[j];
-            if (frame->method_id != NULL) {
+            jmethodID jmethod = frame->method_id;
+            if (jmethod != NULL) {
                 CallFrame *callFrame = sampleInfo->add_frame();
                 callFrame->set_bci(frame->bci);
-//                MethodInfo *methodInfo = createMethodInfo(frame->method_id);
-//                callFrame->set_allocated_method(methodInfo);
-                callFrame->set_jmethodid((long) frame->method_id);
+                callFrame->set_jmethodid(jMethodIdToId(jmethod));
             }
         }
     }
 }
 
-void Profiler::saveMethods(ProfilingInfo *info) {
+void Profiler::saveMethods(ProfilingInfo *info, std::unordered_set<jmethodID> &methods) {
     qsort(_methods, MAX_CALLTRACES, sizeof(MethodSample), MethodSample::comparator);
     for (int i = 0; i < MAX_CALLTRACES; i++) {
         int samples = _methods[i]._call_count;
@@ -370,11 +374,18 @@ void Profiler::saveMethods(ProfilingInfo *info) {
         jmethodID jmethod = _methods[i]._method;
         MethodSampleInfo *sampleInfo = info->add_methods();
         sampleInfo->set_call_count(samples);
-//        MethodInfo *methodInfo = createMethodInfo(jmethod);
-//        sampleInfo->set_allocated_method(methodInfo);
-        sampleInfo->set_jmethodid((long) jmethod);
+        sampleInfo->set_jmethodid(jMethodIdToId(jmethod));
     }
 }
+
+void Profiler::saveMethodIds(ProfilingInfo *info, std::unordered_set<jmethodID> &methodIds) {
+    for (auto &jmethod: methodIds) {
+        MethodInfo *methodInfo = info->add_methodinfos();
+        fillMethodInfo(methodInfo, jmethod);
+    }
+}
+
+
 
 
 

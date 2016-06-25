@@ -16,6 +16,8 @@
 
 #include <jvmti.h>
 #include <iostream>
+#include <unordered_set>
+#include <unordered_map>
 #include "proto/protocol.pb.h"
 
 
@@ -116,9 +118,11 @@ private:
 
     void writeResult();
 
-    void saveMethods(me::serce::franky::ProfilingInfo *info);
+    void saveMethods(me::serce::franky::ProfilingInfo *info, std::unordered_set<jmethodID>& methodIds);
 
-    void saveCallTraces(me::serce::franky::ProfilingInfo *info);
+    void saveCallTraces(me::serce::franky::ProfilingInfo *info, std::unordered_set<jmethodID>& methodIds);
+
+    void saveMethodIds(me::serce::franky::ProfilingInfo *info, std::unordered_set<jmethodID>& methodIds);
 
 public:
 
