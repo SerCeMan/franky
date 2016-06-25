@@ -1,11 +1,13 @@
 package me.serce.franky.ui.flame
 
+import com.google.protobuf.CodedInputStream
 import com.intellij.util.ui.UIUtil
 import me.serce.franky.Protocol
 import me.serce.franky.Protocol.CallTraceSampleInfo
 import java.awt.Dimension
 import java.awt.Graphics
 import java.awt.Rectangle
+import java.io.FileInputStream
 import java.util.*
 import javax.swing.*
 
@@ -73,41 +75,14 @@ class FlameComponent(val tree: FlameTree) : JComponent() {
 
 fun main(args: Array<String>) {
     SwingUtilities.invokeLater {
-        val samples = listOf<CallTraceSampleInfo>(
-                CallTraceSampleInfo.newBuilder()
-                        .setCallCount(2)
-                        .addFrame(Protocol.CallFrame.newBuilder()
-                                .setJMethodId(1)
-                                .build())
-                        .addFrame(Protocol.CallFrame.newBuilder()
-                                .setJMethodId(2)
-                                .build())
-                        .addFrame(Protocol.CallFrame.newBuilder()
-                                .setJMethodId(3)
-                                .build())
-                        .build(),
-                CallTraceSampleInfo.newBuilder()
-                        .setCallCount(1)
-                        .addFrame(Protocol.CallFrame.newBuilder()
-                                .setJMethodId(1)
-                                .build())
-                        .addFrame(Protocol.CallFrame.newBuilder()
-                                .setJMethodId(5)
-                                .build())
-                        .addFrame(Protocol.CallFrame.newBuilder()
-                                .setJMethodId(6)
-                                .build())
-                        .addFrame(Protocol.CallFrame.newBuilder()
-                                .setJMethodId(7)
-                                .build())
-                        .addFrame(Protocol.CallFrame.newBuilder()
-                                .setJMethodId(8)
-                                .build())
-                        .build()
-        )
+        val result = Protocol.Response.parseFrom(CodedInputStream.newInstance(FileInputStream("/home/serce/tmp/ResultData")))
+        val samples = result.profInfo.samplesList
+        val methods = result.profInfo.methodInfosList
+
         val tree = FlameTree(samples)
         val panel = JFrame().apply {
             defaultCloseOperation = JFrame.EXIT_ON_CLOSE
+            pack()
             size = Dimension(800, 600)
             contentPane.apply {
                 add(JLabel("Hello!"))
@@ -115,7 +90,6 @@ fun main(args: Array<String>) {
                     size = Dimension(800, 600)
                 })
             }
-            pack()
             isVisible = true
         }
     }
