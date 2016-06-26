@@ -309,16 +309,17 @@ void Profiler::readRequest(Request *message) {
     }
 }
 
+int64_t jMethodIdToId(const jmethodID &jmethod) {
+    return (int64_t) jmethod;
+}
+
 MethodInfo *fillMethodInfo(MethodInfo *methodInfo, const jmethodID &jmethod) {
     MethodName mn(jmethod);
+    methodInfo->set_jmethodid(jMethodIdToId(jmethod));
     methodInfo->set_name(mn.name());
     methodInfo->set_holder(mn.holder());
     methodInfo->set_sig(mn.signature());
     return methodInfo;
-}
-
-int64_t jMethodIdToId(jmethodID &jmethod) {
-    return (int64_t) jmethod;
 }
 
 void Profiler::writeResult() {
