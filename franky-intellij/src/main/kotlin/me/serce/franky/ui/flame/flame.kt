@@ -53,6 +53,8 @@ class FlameNode(val methodId: Long) {
 class FlameComponent(val tree: FlameTree) : JComponent() {
     val cellHeigh = 20
 
+    
+
     override fun paintComponent(g: Graphics) {
         super.paintComponent(g)
         drawLevel(tree.root, g, 0, width, 0)
@@ -78,6 +80,7 @@ fun main(args: Array<String>) {
     SwingUtilities.invokeLater {
         val result = Protocol.Response.parseFrom(CodedInputStream.newInstance(FileInputStream("/home/serce/tmp/ResultData")))
         val samples = result.profInfo.samplesList
+
         val methods = result.profInfo.methodInfosList
 
         val tree = FlameTree(samples)

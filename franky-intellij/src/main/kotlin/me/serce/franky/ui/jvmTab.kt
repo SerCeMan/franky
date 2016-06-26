@@ -1,5 +1,6 @@
 package me.serce.franky.ui
 
+import com.google.protobuf.CodedOutputStream
 import com.intellij.util.ui.components.BorderLayoutPanel
 import me.serce.franky.Protocol
 import me.serce.franky.jvm.AttachableJVM
@@ -12,6 +13,7 @@ import me.serce.franky.util.subscribeUI
 import rx.lang.kotlin.AsyncSubject
 import rx.lang.kotlin.PublishSubject
 import java.awt.FlowLayout
+import java.io.FileOutputStream
 import javax.swing.JButton
 import javax.swing.JPanel
 import javax.swing.JTextArea
@@ -70,7 +72,11 @@ private class JvmTabView(val state: JvmTabState) : View {
 
         state.profilingResult.subscribeUI { result: Protocol.Response ->
             tabPanel.apply {
-//                result.writeTo(CodedOutputStream.newInstance(FileOutputStream("/home/serce/tmp/ResultData")))
+                FileOutputStream("/home/serce/tmp/ResultData").use { fos ->
+                    val out = CodedOutputStream.newInstance(fos)
+                    result.writeTo(out)
+                    out.flush()
+                }
                 val tree = FlameTree(result.profInfo.samplesList)
                 addToCenter(FlameComponent(tree))
             }
