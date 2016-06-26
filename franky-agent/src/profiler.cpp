@@ -360,6 +360,7 @@ void Profiler::saveCallTraces(ProfilingInfo *info, std::unordered_set<jmethodID>
                 CallFrame *callFrame = sampleInfo->add_frame();
                 callFrame->set_bci(frame->bci);
                 callFrame->set_jmethodid(jMethodIdToId(jmethod));
+                methods.insert(jmethod);
             }
         }
     }
@@ -375,6 +376,7 @@ void Profiler::saveMethods(ProfilingInfo *info, std::unordered_set<jmethodID> &m
         MethodSampleInfo *sampleInfo = info->add_methods();
         sampleInfo->set_call_count(samples);
         sampleInfo->set_jmethodid(jMethodIdToId(jmethod));
+        methods.insert(jmethod);
     }
 }
 
