@@ -77,8 +77,8 @@ private class JvmTabView(val state: JvmTabState) : View {
                     result.writeTo(out)
                     out.flush()
                 }
-                val tree = FlameTree(result.profInfo.samplesList)
-                addToCenter(FlameComponent(tree))
+                val profResultViewModel = ProfResultViewModel(result)
+                addToCenter(profResultViewModel.createComponent())
             }
         }
     }

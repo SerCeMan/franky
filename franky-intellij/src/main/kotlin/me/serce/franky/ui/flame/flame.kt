@@ -1,23 +1,22 @@
 package me.serce.franky.ui.flame
 
 import com.google.protobuf.CodedInputStream
-import com.intellij.util.ui.GridBag
 import com.intellij.util.ui.components.BorderLayoutPanel
 import me.serce.franky.Protocol
-import me.serce.franky.Protocol.CallTraceSampleInfo
-import java.awt.*
-import java.awt.GridBagConstraints.HORIZONTAL
-import java.awt.image.ColorModel
+import me.serce.franky.Protocol.*
+import java.awt.Dimension
+import java.awt.Font
+import java.awt.Graphics
 import java.io.FileInputStream
 import java.util.*
-import javax.swing.*
+import javax.swing.JFrame
+import javax.swing.SwingUtilities
 
 fun CallTraceSampleInfo.validate() {
     if (frameList.isEmpty()) {
         throw IllegalArgumentException("Empty trace sample $this")
     }
 }
-
 
 class FlameTree(val sampleInfo: List<CallTraceSampleInfo>) {
     val root: FlameNode = FlameNode(0)
@@ -50,48 +49,13 @@ class FlameNode(val methodId: Long) {
     val children: HashMap<Long, FlameVertex> = hashMapOf()
 }
 
-class FlameComponent(val tree: FlameTree) : BorderLayoutPanel() {
+class FlameComponent(val tree: FlameTree, val frameFactory: (Long) -> FrameComponent) : BorderLayoutPanel() {
     val cellHeigh = 20
-
-    init {
-//        layout = GridBagLayout()
-        val c = GridBagConstraints()
-        addToCenter(drawGridLevel(c, tree.root, 0, 1.0))
-    }
-
-    private fun drawGridLevel(c: GridBagConstraints, node: FlameNode, yLevel: Int, weight: Double): JComponent {
-        val panel = JPanel().apply {
-            layout = GridBagLayout()
-        }
-        val totalSize = node.children.size + if (node.selfCost == 0) 0 else 1
-        panel.add(JButton(node.methodId.toString()), GridBagConstraints().apply {
-            gridwidth = node.children.size
-            fill = HORIZONTAL
-            gridy = 0
-            weighty = 0.0
-            anchor = GridBagConstraints.NORTH
-            weightx = totalSize.toDouble()
-        })
-        val totalCost = node.selfCost + node.children.map { it.value.cost }.sum()
-        var i = 0
-        for ((id, vertex) in node.children) {
-            val nodeWeight = (vertex.cost / totalCost.toDouble())
-            val res = drawGridLevel(c, vertex.node, yLevel + 1, nodeWeight)
-            panel.add(res, GridBagConstraints().apply {
-                fill = HORIZONTAL
-                weighty = 1.0
-                anchor = GridBagConstraints.NORTH
-                gridy = 1
-                gridx = i++
-                weightx = vertex.cost.toDouble()
-            })
-        }
-        return panel
-    }
-
 
     override fun paintComponent(g: Graphics) {
         super.paintComponent(g)
+        g.font = Font("Default", Font.PLAIN, 10)
+
         drawLevel(tree.root, g, 0, width, 0)
     }
 
@@ -100,7 +64,9 @@ class FlameComponent(val tree: FlameTree) : BorderLayoutPanel() {
         if (width <= 0) {
             return
         }
-        g.drawRect(begin, height, width, cellHeigh)
+        val frameComponent = frameFactory(node.methodId)
+        frameComponent.paintComponent(g, begin, height, width, cellHeigh)
+
         val totalCost = node.selfCost + node.children.map { it.value.cost }.sum()
         var nodeBegin = begin
         for ((id, vertex) in node.children) {
@@ -111,47 +77,30 @@ class FlameComponent(val tree: FlameTree) : BorderLayoutPanel() {
     }
 }
 
+class FrameComponent(mInfo: MethodInfo?) {
+    val methodInfo = mInfo ?: rootMethodInfo()
+
+    fun paintComponent(g: Graphics, x: Int, y: Int, width: Int, heigh: Int) {
+        g.drawRect(x, y, width, heigh)
+        if (width > 50 && methodInfo.jMethodId != 0L) {
+            drawBody(g, heigh, x, y)
+        }
+    }
+
+    private fun drawBody(g: Graphics, heigh: Int, x: Int, y: Int) {
+        g.drawString("${methodInfo.sig} ${methodInfo.name}", x + 2, y + heigh - 5)
+    }
+
+    private fun rootMethodInfo() = MethodInfo.newBuilder().setJMethodId(0).setHolder("").setName("").setSig("").build()
+}
+
 fun main(args: Array<String>) {
     SwingUtilities.invokeLater {
         val result = Protocol.Response.parseFrom(CodedInputStream.newInstance(FileInputStream("/home/serce/tmp/ResultData")))
-        val samples = result.profInfo.samplesList
-//        val samples = listOf<CallTraceSampleInfo>(
-//                CallTraceSampleInfo.newBuilder()
-//                        .setCallCount(2)
-//                        .addFrame(Protocol.CallFrame.newBuilder()
-//                                .setJMethodId(1)
-//                                .build())
-//                        .addFrame(Protocol.CallFrame.newBuilder()
-//                                .setJMethodId(2)
-//                                .build())
-//                        .addFrame(Protocol.CallFrame.newBuilder()
-//                                .setJMethodId(3)
-//                                .build())
-//                        .build(),
-//                CallTraceSampleInfo.newBuilder()
-//                        .setCallCount(1)
-//                        .addFrame(Protocol.CallFrame.newBuilder()
-//                                .setJMethodId(1)
-//                                .build())
-//                        .addFrame(Protocol.CallFrame.newBuilder()
-//                                .setJMethodId(5)
-//                                .build())
-//                        .addFrame(Protocol.CallFrame.newBuilder()
-//                                .setJMethodId(6)
-//                                .build())
-//                        .addFrame(Protocol.CallFrame.newBuilder()
-//                                .setJMethodId(7)
-//                                .build())
-//                        .addFrame(Protocol.CallFrame.newBuilder()
-//                                .setJMethodId(8)
-//                                .build())
-//                        .addFrame(Protocol.CallFrame.newBuilder()
-//                                .setJMethodId(9)
-//                                .build())
-//                        .build()
-//        )
+        val profInfo = result.profInfo
+        val samples = profInfo.samplesList
+        val methods: Map<Long, MethodInfo> = profInfo.methodInfosList.associateBy({ it.jMethodId }, { it })
 
-//        val methods = result.profInfo.methodInfosList
 
         val tree = FlameTree(samples)
         val panel = JFrame().apply {
@@ -159,8 +108,7 @@ fun main(args: Array<String>) {
             pack()
             size = Dimension(800, 600)
             contentPane.apply {
-                add(JLabel("Hello!"))
-                add(FlameComponent(tree).apply {
+                add(FlameComponent(tree, { FrameComponent(methods[it]) }).apply {
                     size = Dimension(800, 600)
                 })
             }
