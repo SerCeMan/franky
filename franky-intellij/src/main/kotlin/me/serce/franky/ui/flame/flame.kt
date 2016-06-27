@@ -2,13 +2,18 @@ package me.serce.franky.ui.flame
 
 import com.google.protobuf.CodedInputStream
 import com.intellij.util.ui.components.BorderLayoutPanel
+import gnu.trove.TIntObjectHashMap
 import me.serce.franky.Protocol
 import me.serce.franky.Protocol.*
 import java.awt.Dimension
 import java.awt.Font
 import java.awt.Graphics
+import java.awt.event.MouseAdapter
+import java.awt.event.MouseEvent
+import java.awt.event.MouseListener
 import java.io.FileInputStream
 import java.util.*
+import javax.swing.JComponent
 import javax.swing.JFrame
 import javax.swing.SwingUtilities
 
@@ -49,14 +54,29 @@ class FlameNode(val methodId: Long) {
     val children: HashMap<Long, FlameVertex> = hashMapOf()
 }
 
-class FlameComponent(val tree: FlameTree, val frameFactory: (Long) -> FrameComponent) : BorderLayoutPanel() {
-    val cellHeigh = 20
+class FlameComponent(val tree: FlameTree, val frameFactory: (Long) -> FrameComponent) : JComponent() {
+    data class RectObject(val x: Int, val y: Int, val width: Int, val heigh: Int, val node: FlameNode, val comp: FrameComponent)
+
+    companion object {
+        const val cellHeigh = 20
+    }
+
+    var root = tree.root
+    val xLine: ArrayList<RectObject> = arrayListOf()
+
+    init {
+        addMouseListener(object : MouseAdapter() {
+            override fun mouseClicked(e: MouseEvent) {
+                
+            }
+        })
+    }
 
     override fun paintComponent(g: Graphics) {
         super.paintComponent(g)
+        xLine.clear()
         g.font = Font("Default", Font.PLAIN, 10)
-
-        drawLevel(tree.root, g, 0, width, 0)
+        drawLevel(root, g, 0, width, 0)
     }
 
     private fun drawLevel(node: FlameNode, g: Graphics, begin: Int, end: Int, height: Int) {
@@ -66,6 +86,9 @@ class FlameComponent(val tree: FlameTree, val frameFactory: (Long) -> FrameCompo
         }
         val frameComponent = frameFactory(node.methodId)
         frameComponent.paintComponent(g, begin, height, width, cellHeigh)
+
+        val record = RectObject(begin, height, width, cellHeigh, node, frameComponent)
+        xLine.add(record)
 
         val totalCost = node.selfCost + node.children.map { it.value.cost }.sum()
         var nodeBegin = begin
