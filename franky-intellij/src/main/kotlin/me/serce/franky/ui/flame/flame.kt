@@ -5,6 +5,7 @@ import com.intellij.util.ui.components.BorderLayoutPanel
 import gnu.trove.TIntObjectHashMap
 import me.serce.franky.Protocol
 import me.serce.franky.Protocol.*
+import rx.lang.kotlin.PublishSubject
 import java.awt.Dimension
 import java.awt.Font
 import java.awt.Graphics
@@ -54,55 +55,87 @@ class FlameNode(val methodId: Long) {
     val children: HashMap<Long, FlameVertex> = hashMapOf()
 }
 
-class FlameComponent(val tree: FlameTree, val frameFactory: (Long) -> FrameComponent) : JComponent() {
-    data class RectObject(val x: Int, val y: Int, val width: Int, val heigh: Int, val node: FlameNode, val comp: FrameComponent)
 
-    companion object {
-        const val cellHeigh = 20
+//////////////// components
+
+class FlameComponent(private val tree: FlameTree, val frameFactory: (Long) -> MethodInfo?) : JComponent() {
+    data class ComponentCoord(val x: Double, val width: Double, val level: Int) {
+        companion object {
+            const val frameHeight = 20
+        }
+
+        fun getX(parentWidth: Int) = (x * parentWidth).toInt()
+        fun getWidth(parentWidth: Int) = (width * parentWidth).toInt()
+        fun getY() = level * frameHeight
+        fun getHeight() = frameHeight
+
+        fun isIn(point: Double) = x < point && point < x + width
+
+        fun isIn(rootCoords: ComponentCoord) = x <= rootCoords.x + rootCoords.width || x + width >= rootCoords.x
     }
 
-    var root = tree.root
-    val xLine: ArrayList<RectObject> = arrayListOf()
+    val methodInfoSubject = PublishSubject<MethodInfo>()
+
+    private val components = hashMapOf<ComponentCoord, FrameComponent>()
+    private val nodeToCoord = hashMapOf<FlameNode, ComponentCoord>()
+    private var currentRoot = tree.root
 
     init {
+        build(tree.root, 0.0, 1.0, 0)
         addMouseListener(object : MouseAdapter() {
             override fun mouseClicked(e: MouseEvent) {
-                
+                val x = e.x / width.toDouble()
+                val level = e.y / ComponentCoord.frameHeight
+                // todo sloooow
+                for ((coord, comp) in components) {
+                    if (coord.level == level && coord.isIn(x)) {
+                        methodInfoSubject.onNext(comp.methodInfo)
+                    }
+                }
             }
         })
     }
 
-    override fun paintComponent(g: Graphics) {
-        super.paintComponent(g)
-        xLine.clear()
-        g.font = Font("Default", Font.PLAIN, 10)
-        drawLevel(root, g, 0, width, 0)
+    fun resetToRoot() {
+        currentRoot = tree.root
     }
 
-    private fun drawLevel(node: FlameNode, g: Graphics, begin: Int, end: Int, height: Int) {
+    private fun build(node: FlameNode, begin: Double, end: Double, level: Int) {
         val width = end - begin
         if (width <= 0) {
             return
         }
-        val frameComponent = frameFactory(node.methodId)
-        frameComponent.paintComponent(g, begin, height, width, cellHeigh)
-
-        val record = RectObject(begin, height, width, cellHeigh, node, frameComponent)
-        xLine.add(record)
+        val methodInfo = frameFactory(node.methodId) ?: rootMethodInfo()
+        val coord = ComponentCoord(begin, width, level)
+        nodeToCoord[node] = coord
+        components[coord] = FrameComponent(methodInfo)
 
         val totalCost = node.selfCost + node.children.map { it.value.cost }.sum()
         var nodeBegin = begin
         for ((id, vertex) in node.children) {
-            val nodeWidth = (width * (vertex.cost / totalCost.toDouble())).toInt()
-            drawLevel(vertex.node, g, nodeBegin, nodeBegin + nodeWidth, height + cellHeigh)
+            val nodeWidth = width * (vertex.cost / totalCost.toDouble())
+            build(vertex.node, nodeBegin, nodeBegin + nodeWidth, level + 1)
             nodeBegin += nodeWidth
         }
     }
+
+
+    override fun paintComponent(g: Graphics) {
+        super.paintComponent(g)
+        g.font = Font("Default", Font.PLAIN, 10)
+        val rootCoords = nodeToCoord[currentRoot]!!
+        for ((coord, component) in components) {
+            if (coord.isIn(rootCoords)) {
+                component.paintComponent(g, coord.getX(width), coord.getY(), coord.getWidth(width), coord.getHeight())
+            }
+        }
+    }
+
+    private fun rootMethodInfo() = MethodInfo.newBuilder().setJMethodId(0).setHolder("").setName("").setSig("").build()
 }
 
-class FrameComponent(mInfo: MethodInfo?) {
-    val methodInfo = mInfo ?: rootMethodInfo()
 
+class FrameComponent(val methodInfo: MethodInfo) {
     fun paintComponent(g: Graphics, x: Int, y: Int, width: Int, heigh: Int) {
         g.drawRect(x, y, width, heigh)
         if (width > 50 && methodInfo.jMethodId != 0L) {
@@ -114,7 +147,6 @@ class FrameComponent(mInfo: MethodInfo?) {
         g.drawString("${methodInfo.sig} ${methodInfo.name}", x + 2, y + heigh - 5)
     }
 
-    private fun rootMethodInfo() = MethodInfo.newBuilder().setJMethodId(0).setHolder("").setName("").setSig("").build()
 }
 
 fun main(args: Array<String>) {
@@ -131,8 +163,11 @@ fun main(args: Array<String>) {
             pack()
             size = Dimension(800, 600)
             contentPane.apply {
-                add(FlameComponent(tree, { FrameComponent(methods[it]) }).apply {
+                add(FlameComponent(tree, { methods[it] }).apply {
                     size = Dimension(800, 600)
+                    methodInfoSubject.subscribe {
+                        println("CLICK $it")
+                    }
                 })
             }
             isVisible = true
