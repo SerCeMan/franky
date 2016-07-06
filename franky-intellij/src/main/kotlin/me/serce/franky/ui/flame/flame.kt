@@ -6,17 +6,14 @@ import gnu.trove.TIntObjectHashMap
 import me.serce.franky.Protocol
 import me.serce.franky.Protocol.*
 import rx.lang.kotlin.PublishSubject
-import java.awt.Dimension
-import java.awt.Font
-import java.awt.Graphics
+import java.awt.*
+import java.awt.event.ActionEvent
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import java.awt.event.MouseListener
 import java.io.FileInputStream
 import java.util.*
-import javax.swing.JComponent
-import javax.swing.JFrame
-import javax.swing.SwingUtilities
+import javax.swing.*
 
 fun CallTraceSampleInfo.validate() {
     if (frameList.isEmpty()) {
@@ -59,6 +56,7 @@ class FlameNode(val methodId: Long) {
 //////////////// components
 
 class FlameComponent(private val tree: FlameTree, val frameFactory: (Long) -> MethodInfo?) : JComponent() {
+
     data class ComponentCoord(val x: Double, val width: Double, val level: Int) {
         companion object {
             const val frameHeight = 20
@@ -68,36 +66,15 @@ class FlameComponent(private val tree: FlameTree, val frameFactory: (Long) -> Me
         fun getWidth(parentWidth: Int) = (width * parentWidth).toInt()
         fun getY() = level * frameHeight
         fun getHeight() = frameHeight
-
-        fun isIn(point: Double) = x < point && point < x + width
-
-        fun isIn(rootCoords: ComponentCoord) = x <= rootCoords.x + rootCoords.width || x + width >= rootCoords.x
     }
 
     val methodInfoSubject = PublishSubject<MethodInfo>()
-
-    private val components = hashMapOf<ComponentCoord, FrameComponent>()
-    private val nodeToCoord = hashMapOf<FlameNode, ComponentCoord>()
-    private var currentRoot = tree.root
+    private val nodeToComp = hashMapOf<FlameNode, JComponent>()
+    var currentRoot = tree.root
 
     init {
-        build(tree.root, 0.0, 1.0, 0)
-        addMouseListener(object : MouseAdapter() {
-            override fun mouseClicked(e: MouseEvent) {
-                val x = e.x / width.toDouble()
-                val level = e.y / ComponentCoord.frameHeight
-                // todo sloooow
-                for ((coord, comp) in components) {
-                    if (coord.level == level && coord.isIn(x)) {
-                        methodInfoSubject.onNext(comp.methodInfo)
-                    }
-                }
-            }
-        })
-    }
-
-    fun resetToRoot() {
-        currentRoot = tree.root
+        layout = null
+        recalcPositions()
     }
 
     private fun build(node: FlameNode, begin: Double, end: Double, level: Int) {
@@ -105,10 +82,23 @@ class FlameComponent(private val tree: FlameTree, val frameFactory: (Long) -> Me
         if (width <= 0) {
             return
         }
-        val methodInfo = frameFactory(node.methodId) ?: rootMethodInfo()
+        val comp = nodeToComp.getOrPut(node, {
+            val methodInfo = frameFactory(node.methodId) ?: rootMethodInfo()
+            FrameComponent(methodInfo).apply {
+                this@FlameComponent.add(this)
+                expandPublisher.subscribe {
+                    resetNode(node)
+                }
+            }
+        })
+
         val coord = ComponentCoord(begin, width, level)
-        nodeToCoord[node] = coord
-        components[coord] = FrameComponent(methodInfo)
+        val dim = Dimension(coord.getWidth(getWidth()), coord.getHeight())
+        val p = Point(coord.getX(getWidth()), coord.getY())
+        comp.apply {
+            size = dim
+            location = p
+        }
 
         val totalCost = node.selfCost + node.children.map { it.value.cost }.sum()
         var nodeBegin = begin
@@ -119,34 +109,43 @@ class FlameComponent(private val tree: FlameTree, val frameFactory: (Long) -> Me
         }
     }
 
-
-    override fun paintComponent(g: Graphics) {
-        super.paintComponent(g)
-        g.font = Font("Default", Font.PLAIN, 10)
-        val rootCoords = nodeToCoord[currentRoot]!!
-        for ((coord, component) in components) {
-            if (coord.isIn(rootCoords)) {
-                component.paintComponent(g, coord.getX(width), coord.getY(), coord.getWidth(width), coord.getHeight())
-            }
-        }
+    private fun resetToRoot() {
+        currentRoot = tree.root
     }
 
+    private fun resetNode(node: FlameNode) {
+        currentRoot = node
+        for (c in components) {
+            c.size = Dimension(0, 0)
+            c.location = Point(0, 0)
+        }
+        recalcPositions()
+        validate()
+        repaint()
+    }
+
+
+    override fun paintComponent(g: Graphics) {
+        recalcPositions()
+        super.paintComponent(g)
+    }
+
+    private fun recalcPositions() = build(currentRoot, 0.0, 1.0, 0)
     private fun rootMethodInfo() = MethodInfo.newBuilder().setJMethodId(0).setHolder("").setName("").setSig("").build()
 }
 
 
-class FrameComponent(val methodInfo: MethodInfo) {
-    fun paintComponent(g: Graphics, x: Int, y: Int, width: Int, heigh: Int) {
-        g.drawRect(x, y, width, heigh)
-        if (width > 50 && methodInfo.jMethodId != 0L) {
-            drawBody(g, heigh, x, y)
-        }
+class FrameComponent(methodInfo: MethodInfo) : BorderLayoutPanel() {
+    val expandPublisher = PublishSubject<ActionEvent>()
+
+    private val expandBtn = JButton("expand").apply {
+        addActionListener { expandPublisher.onNext(it) }
     }
 
-    private fun drawBody(g: Graphics, heigh: Int, x: Int, y: Int) {
-        g.drawString("${methodInfo.sig} ${methodInfo.name}", x + 2, y + heigh - 5)
+    init {
+        addToCenter(JButton(methodInfo.name.toString()))
+        addToRight(expandBtn)
     }
-
 }
 
 fun main(args: Array<String>) {
@@ -171,6 +170,7 @@ fun main(args: Array<String>) {
                 })
             }
             isVisible = true
+            repaint()
         }
     }
 }
