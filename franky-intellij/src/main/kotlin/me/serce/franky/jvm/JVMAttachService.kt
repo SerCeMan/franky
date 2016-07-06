@@ -1,5 +1,6 @@
 package me.serce.franky.jvm
 
+import com.google.protobuf.CodedInputStream
 import com.intellij.openapi.components.ServiceManager
 import com.sun.tools.attach.VirtualMachine
 import com.sun.tools.attach.VirtualMachineDescriptor
@@ -9,6 +10,7 @@ import me.serce.franky.Protocol.Request.RequestType.START_PROFILING
 import me.serce.franky.Protocol.Request.RequestType.STOP_PROFILING
 import rx.Observable
 import rx.schedulers.Schedulers
+import java.io.FileInputStream
 import kotlin.concurrent.thread
 
 data class AttachableJVM(val id: String, val name: String) : Comparable<AttachableJVM> {
@@ -47,15 +49,28 @@ class JVMSession(private val remoteJVM: JVMRemoteInstance,
                  private val vm: VirtualMachine) : AutoCloseable {
     private var isRunning = false;
 
+    // todo DEV-MODE
+    //    fun startProfiling() {
+    //        remoteJVM.send(START_PROFILING)
+    //        isRunning = true
+    //    }
+    //
+    //    fun stopProfiling() {
+    //        remoteJVM.send(STOP_PROFILING)
+    //        isRunning = false
+    //    }
+
     fun startProfiling() {
-        remoteJVM.send(START_PROFILING)
+        //        remoteJVM.send(START_PROFILING)
         isRunning = true
     }
 
     fun stopProfiling() {
-        remoteJVM.send(STOP_PROFILING)
+        //        remoteJVM.send(STOP_PROFILING)
         isRunning = false
+        profilingResult().onNext(Protocol.Response.parseFrom(CodedInputStream.newInstance(FileInputStream("/home/serce/tmp/ResultData"))))
     }
+
 
     fun profilingResult() = remoteJVM.response
 

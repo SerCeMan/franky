@@ -1,6 +1,7 @@
 package me.serce.franky.ui
 
 import com.google.protobuf.CodedOutputStream
+import com.intellij.ui.components.JBScrollPane
 import com.intellij.util.ui.components.BorderLayoutPanel
 import me.serce.franky.Protocol
 import me.serce.franky.jvm.AttachableJVM
@@ -12,11 +13,10 @@ import me.serce.franky.util.Lifetime
 import me.serce.franky.util.subscribeUI
 import rx.lang.kotlin.AsyncSubject
 import rx.lang.kotlin.PublishSubject
+import java.awt.Color
 import java.awt.FlowLayout
 import java.io.FileOutputStream
-import javax.swing.JButton
-import javax.swing.JPanel
-import javax.swing.JTextArea
+import javax.swing.*
 
 class JvmTabViewModel(val lifetime: Lifetime, vm: AttachableJVM) : ViewModel {
     private val state = JvmTabState()
@@ -72,13 +72,16 @@ private class JvmTabView(val state: JvmTabState) : View {
 
         state.profilingResult.subscribeUI { result: Protocol.Response ->
             tabPanel.apply {
-                FileOutputStream("/home/serce/tmp/ResultData").use { fos ->
-                    val out = CodedOutputStream.newInstance(fos)
-                    result.writeTo(out)
-                    out.flush()
-                }
+                //                FileOutputStream("/home/serce/tmp/ResultData").use { fos ->
+                //                    val out = CodedOutputStream.newInstance(fos)
+                //                    result.writeTo(out)
+                //                    out.flush()
+                //                }
                 val profResultViewModel = ProfResultViewModel(result)
-                addToCenter(profResultViewModel.createComponent())
+                addToCenter(JBScrollPane(profResultViewModel.createComponent()).apply {
+                    verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS
+                    border = BorderFactory.createLineBorder(Color.RED)
+                })
             }
         }
     }

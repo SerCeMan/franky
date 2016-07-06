@@ -1,6 +1,11 @@
 package me.serce.franky.ui.flame
 
 import com.google.protobuf.CodedInputStream
+import com.intellij.debugger.engine.JVMNameUtil
+import com.intellij.openapi.project.ProjectManager
+import com.intellij.psi.PsiManager
+import com.intellij.psi.util.ClassUtil
+import com.intellij.ui.components.JBScrollPane
 import com.intellij.util.ui.components.BorderLayoutPanel
 import gnu.trove.TIntObjectHashMap
 import me.serce.franky.Protocol
@@ -56,14 +61,13 @@ class FlameNode(val methodId: Long) {
 //////////////// components
 
 class FlameComponent(private val tree: FlameTree, val frameFactory: (Long) -> MethodInfo?) : JComponent() {
-
-    data class ComponentCoord(val x: Double, val width: Double, val level: Int) {
+    data class ComponentCoord(val x: Double, val width: Double, val level: Int, val parentWidth: Int) {
         companion object {
             const val frameHeight = 20
         }
 
-        fun getX(parentWidth: Int) = (x * parentWidth).toInt()
-        fun getWidth(parentWidth: Int) = (width * parentWidth).toInt()
+        fun getX() = (x * parentWidth).toInt()
+        fun getWidth() = (width * parentWidth).toInt()
         fun getY() = level * frameHeight
         fun getHeight() = frameHeight
     }
@@ -71,6 +75,7 @@ class FlameComponent(private val tree: FlameTree, val frameFactory: (Long) -> Me
     val methodInfoSubject = PublishSubject<MethodInfo>()
     private val nodeToComp = hashMapOf<FlameNode, JComponent>()
     var currentRoot = tree.root
+    var maxHeight = 0
 
     init {
         layout = null
@@ -82,22 +87,14 @@ class FlameComponent(private val tree: FlameTree, val frameFactory: (Long) -> Me
         if (width <= 0) {
             return
         }
-        val comp = nodeToComp.getOrPut(node, {
-            val methodInfo = frameFactory(node.methodId) ?: rootMethodInfo()
-            FrameComponent(methodInfo).apply {
-                this@FlameComponent.add(this)
-                expandPublisher.subscribe {
-                    resetNode(node)
+        val coord = ComponentCoord(begin, width, level, getWidth())
+        nodeToComp.getOrPut(node, { makeFrameComponent(node) })
+                .apply {
+                    size = Dimension(coord.getWidth(), coord.getHeight())
+                    location = Point(coord.getX(), coord.getY())
                 }
-            }
-        })
-
-        val coord = ComponentCoord(begin, width, level)
-        val dim = Dimension(coord.getWidth(getWidth()), coord.getHeight())
-        val p = Point(coord.getX(getWidth()), coord.getY())
-        comp.apply {
-            size = dim
-            location = p
+        if (coord.getY() >= maxHeight) {
+            maxHeight = coord.getY()
         }
 
         val totalCost = node.selfCost + node.children.map { it.value.cost }.sum()
@@ -106,6 +103,16 @@ class FlameComponent(private val tree: FlameTree, val frameFactory: (Long) -> Me
             val nodeWidth = width * (vertex.cost / totalCost.toDouble())
             build(vertex.node, nodeBegin, nodeBegin + nodeWidth, level + 1)
             nodeBegin += nodeWidth
+        }
+    }
+
+    private fun makeFrameComponent(node: FlameNode): FrameComponent {
+        val methodInfo = frameFactory(node.methodId) ?: rootMethodInfo()
+        return FrameComponent(methodInfo).apply {
+            this@FlameComponent.add(this)
+            expandPublisher.subscribe {
+                resetNode(node)
+            }
         }
     }
 
@@ -130,23 +137,55 @@ class FlameComponent(private val tree: FlameTree, val frameFactory: (Long) -> Me
         super.paintComponent(g)
     }
 
-    private fun recalcPositions() = build(currentRoot, 0.0, 1.0, 0)
+    /**
+     * hack for null layout
+     */
+    override fun getPreferredSize() = super.getPreferredSize().apply {
+        height = maxHeight
+    }
+
+    private fun recalcPositions() {
+        maxHeight = 0
+        build(currentRoot, 0.0, 1.0, 0)
+    }
+
     private fun rootMethodInfo() = MethodInfo.newBuilder().setJMethodId(0).setHolder("").setName("").setSig("").build()
 }
 
 
-class FrameComponent(methodInfo: MethodInfo) : BorderLayoutPanel() {
+class FrameComponent(val methodInfo: MethodInfo) : BorderLayoutPanel() {
     val expandPublisher = PublishSubject<ActionEvent>()
 
     private val expandBtn = JButton("expand").apply {
         addActionListener { expandPublisher.onNext(it) }
     }
+    private val methodBtn = JButton(methodInfo.name.toString()).apply {
+        addActionListener {
+            click()
+        }
+    }
+
+    private fun click() {
+        val projectManager = ProjectManager.getInstance()
+        val projects = projectManager.openProjects
+        if (projects.isNotEmpty()) {
+            val psiManager = PsiManager.getInstance(projects.first())
+            val method = ClassUtil.findPsiClass(psiManager, methodInfo.holder)
+                    ?.findMethodsByName(methodInfo.name, false)
+                    ?.filter {
+                        methodInfo.sig == JVMNameUtil.getJVMSignature(it).getName(null)
+                    }
+                    ?.firstOrNull()
+            method?.navigate(true)
+        }
+    }
 
     init {
-        addToCenter(JButton(methodInfo.name.toString()))
+        addToCenter(methodBtn)
         addToRight(expandBtn)
     }
 }
+
 
 fun main(args: Array<String>) {
     SwingUtilities.invokeLater {
@@ -162,11 +201,13 @@ fun main(args: Array<String>) {
             pack()
             size = Dimension(800, 600)
             contentPane.apply {
-                add(FlameComponent(tree, { methods[it] }).apply {
+                add(JScrollPane(FlameComponent(tree, { methods[it] }).apply {
                     size = Dimension(800, 600)
                     methodInfoSubject.subscribe {
                         println("CLICK $it")
                     }
+                }).apply {
+                    verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS
                 })
             }
             isVisible = true
