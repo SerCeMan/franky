@@ -22,12 +22,12 @@ import org.jetbrains.io.addChannelListener
 const val FRANKY_PORT: Int = 4897;
 
 class FrankyComponent(val jvmRemoteService: JVMRemoteService) : ApplicationComponent {
-    val lifetime = Lifetime()
+    val rootLifetime = Lifetime()
 
     private @Volatile var ch: Channel? = null
 
     init {
-        lifetime += {
+        rootLifetime += {
             ch?.close()
         }
     }
@@ -84,5 +84,5 @@ class FrankyComponent(val jvmRemoteService: JVMRemoteService) : ApplicationCompo
     }
 
 
-    override fun disposeComponent() = lifetime.terminate()
+    override fun disposeComponent() = rootLifetime.terminate()
 }

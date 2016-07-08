@@ -4,6 +4,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.util.ui.components.BorderLayoutPanel
+import me.serce.franky.FrankyComponent
 import me.serce.franky.jvm.AttachableJVM
 import me.serce.franky.util.Lifetime
 import me.serce.franky.util.create
@@ -13,16 +14,16 @@ import java.awt.Dimension
 import javax.swing.JComponent
 import javax.swing.JTabbedPane
 
-class FrankyToolWindowFactory() : ToolWindowFactory {
+class FrankyToolWindowFactory(val frankyComponent: FrankyComponent) : ToolWindowFactory {
+
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
-        val frankyPanelController = FrankyPanelController()
+        val frankyPanelController = FrankyPanelController(frankyComponent.rootLifetime.create())
         val frankyPanel = frankyPanelController.createComponent()
         toolWindow.component.add(frankyPanel)
     }
 }
 
-class FrankyPanelController() : ViewModel {
-    val lifetime: Lifetime = Lifetime()
+class FrankyPanelController(val lifetime: Lifetime) : ViewModel {
 
     override fun createComponent(): JComponent {
         val jvmsListController: JvmsListViewModel = JvmsListViewModelImpl(lifetime.create())
