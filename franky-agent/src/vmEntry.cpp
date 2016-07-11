@@ -15,6 +15,7 @@
  */
 
 #include <string.h>
+#include <jvmti.h>
 #include "profiler.h"
 #include "vmEntry.h"
 
@@ -32,6 +33,8 @@ void VM::init(JavaVM* vm) {
     capabilities.can_get_source_file_name = 1;
     capabilities.can_get_line_numbers = 1;
     capabilities.can_generate_compiled_method_load_events = 1;
+    capabilities.can_redefine_classes = 1;
+    capabilities.can_redefine_any_class = 1;
     _jvmti->AddCapabilities(&capabilities);
 
     jvmtiEventCallbacks callbacks = {0};

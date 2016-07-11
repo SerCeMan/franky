@@ -239,19 +239,40 @@ void sendResponse(int sockfd, me::serce::franky::Response &message) {
     }
 }
 
-void performDeopt() {
-    /*
+/**
+ * Our agent enables -XX:+DebugNonSafepoints, but when we connect the agent this flag will be working only for
+ * methods compiled after an agent connection.
+ *
+ * We want to call CodeCache::mark_all_nmethods_for_deoptimization, but we can't without playing with offsets which isn't
+ * safe. Another way is to use WhiteBox API, but we can't enable it at runtime.
+ *
+ * So our choice is to call RedefineClasses which will invoke deoptimization of the world because agent is connected
+ * after JVM started.
+ *
+ * @see VM_RedefineClasses::redefine_single_class and VM_RedefineClasses::flush_dependent_code
+ */
+void performWorldDeopt() {
     jvmtiEnv *jvmti = VM::jvmti();
     JNIEnv *env = VM::jni();
     jvmtiClassDefinition jcd;
-    const char *className = "java.io.Serializable";
-    const unsigned char *classBytes = {};
+    const char *className = "java/io/Serializable";
+    const unsigned char classBytes[] = {202, 254, 186, 190, 0, 0, 0, 52, 0, 7, 7, 0, 5, 7, 0, 6, 1, 0, 10, 83, 111, 117,
+                                        114, 99, 101, 70, 105, 108, 101, 1, 0, 17, 83, 101, 114, 105, 97, 108, 105, 122,
+                                        97, 98, 108, 101, 46, 106, 97, 118, 97, 1, 0, 20, 106, 97, 118, 97, 47, 105,
+                                        111, 47, 83, 101, 114, 105, 97, 108, 105, 122, 97, 98, 108, 101, 1, 0, 16, 106,
+                                        97, 118, 97, 47, 108, 97, 110, 103, 47, 79, 98, 106, 101, 99, 116, 6, 1, 0, 1,
+                                        0, 2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 3, 0, 0, 0, 2, 0, 4};
     jcd.klass = env->FindClass(className);
+    if (jcd.klass == NULL) {
+        error("klass is NULL");
+    }
     jcd.class_byte_count = sizeof(classBytes);
     jcd.class_bytes = classBytes;
 
-    jvmti->RedefineClasses(1, &jcd);
-    */
+    jvmtiError err = jvmti->RedefineClasses(1, &jcd);
+    if (err != 0) {
+        error((std::string("ERROR") + std::to_string(err)).c_str());
+    }
 }
 
 
@@ -273,7 +294,7 @@ void Profiler::init(int port) {
     if (connect(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
         error("connecting");
     }
-    performDeopt();
+    performWorldDeopt();
 
     Response response;
     response.set_id(getpid());
