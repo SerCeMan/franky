@@ -214,7 +214,6 @@ void error(const char *msg) {
     exit(0);
 }
 
-
 void sendResponse(int sockfd, me::serce::franky::Response &message) {
     using namespace google::protobuf;
     using namespace google::protobuf::io;
@@ -240,6 +239,22 @@ void sendResponse(int sockfd, me::serce::franky::Response &message) {
     }
 }
 
+void performDeopt() {
+    /*
+    jvmtiEnv *jvmti = VM::jvmti();
+    JNIEnv *env = VM::jni();
+    jvmtiClassDefinition jcd;
+    const char *className = "java.io.Serializable";
+    const unsigned char *classBytes = {};
+    jcd.klass = env->FindClass(className);
+    jcd.class_byte_count = sizeof(classBytes);
+    jcd.class_bytes = classBytes;
+
+    jvmti->RedefineClasses(1, &jcd);
+    */
+}
+
+
 void Profiler::init(int port) {
     portno = (uint16_t) port;
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -258,6 +273,7 @@ void Profiler::init(int port) {
     if (connect(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
         error("connecting");
     }
+    performDeopt();
 
     Response response;
     response.set_id(getpid());
