@@ -24,8 +24,11 @@ class VM {
     static void loadMethodIDs(jvmtiEnv* jvmti, jclass klass);
     static void loadAllMethodIDs(jvmtiEnv* jvmti);
 
+    static jvmtiError set_capabilities();
+    static jvmtiError register_all_callback_functions();
+
   public:
-    static void init(JavaVM* vm);
+    static jint init(JavaVM* vm);
 
     static void attach(JavaVM* vm) {
         init(vm);

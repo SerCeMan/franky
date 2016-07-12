@@ -16,16 +16,43 @@
 
 #include <string.h>
 #include <jvmti.h>
+#include <jvmticmlr.h>
 #include "profiler.h"
 #include "vmEntry.h"
 
-JavaVM* VM::_vm;
-jvmtiEnv* VM::_jvmti;
+JavaVM *VM::_vm;
+jvmtiEnv *VM::_jvmti;
 
-void VM::init(JavaVM* vm) {
+
+jint VM::init(JavaVM *vm) {
     _vm = vm;
-    _vm->GetEnv((void**)&_jvmti, JVMTI_VERSION_1_0);
 
+    jint result;
+    result = _vm->GetEnv((void **) &_jvmti, JVMTI_VERSION_1_0);
+    if (result != JNI_OK || jvmti == NULL) {
+        printf("ERROR: Unable to access JVMTI Version 1 (0x%x),"
+                       " is your J2SE a 1.5 or newer version? JNIEnv's GetEnv() returned %d which is wrong.\n",
+               JVMTI_VERSION_1, (int) result);
+        return result;
+    }
+
+    jvmtiError error;
+    if ((error = set_capabilities()) != JVMTI_ERROR_NONE) {
+        return error;
+    }
+    if ((error = register_all_callback_functions()) != JVMTI_ERROR_NONE) {
+        return error;
+    }
+
+    _jvmti->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_VM_INIT, NULL);
+    _jvmti->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_CLASS_LOAD, NULL);
+    _jvmti->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_CLASS_PREPARE, NULL);
+    _jvmti->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_COMPILED_METHOD_LOAD, NULL);
+
+    return JNI_OK;
+}
+
+jvmtiError VM::set_capabilities() {
     jvmtiCapabilities capabilities = {0};
     capabilities.can_generate_all_class_hook_events = 1;
     capabilities.can_get_bytecodes = 1;
@@ -35,49 +62,45 @@ void VM::init(JavaVM* vm) {
     capabilities.can_generate_compiled_method_load_events = 1;
     capabilities.can_redefine_classes = 1;
     capabilities.can_redefine_any_class = 1;
-    _jvmti->AddCapabilities(&capabilities);
+    return _jvmti->AddCapabilities(&capabilities);
+}
 
+jvmtiError VM::register_all_callback_functions() {
     jvmtiEventCallbacks callbacks = {0};
     callbacks.VMInit = VMInit;
     callbacks.ClassLoad = ClassLoad;
     callbacks.ClassPrepare = ClassPrepare;
     callbacks.CompiledMethodLoad = CompiledMethodLoad;
-    _jvmti->SetEventCallbacks(&callbacks, sizeof(callbacks));
-
-    _jvmti->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_VM_INIT, NULL);
-    _jvmti->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_CLASS_LOAD, NULL);
-    _jvmti->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_CLASS_PREPARE, NULL);
-    _jvmti->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_COMPILED_METHOD_LOAD, NULL);
+    return _jvmti->SetEventCallbacks(&callbacks, sizeof(callbacks));
 }
 
-void VM::loadMethodIDs(jvmtiEnv* jvmti, jclass klass) {
+
+void VM::loadMethodIDs(jvmtiEnv *jvmti, jclass klass) {
     jint method_count;
-    jmethodID* methods;
+    jmethodID *methods;
     if (jvmti->GetClassMethods(klass, &method_count, &methods) == 0) {
-        jvmti->Deallocate((unsigned char*)methods);
+        jvmti->Deallocate((unsigned char *) methods);
     }
 }
 
-void VM::loadAllMethodIDs(jvmtiEnv* jvmti) {
+void VM::loadAllMethodIDs(jvmtiEnv *jvmti) {
     jint class_count;
-    jclass* classes;
+    jclass *classes;
     if (jvmti->GetLoadedClasses(&class_count, &classes) == 0) {
         for (int i = 0; i < class_count; i++) {
             loadMethodIDs(jvmti, classes[i]);
         }
-        jvmti->Deallocate((unsigned char*)classes);
+        jvmti->Deallocate((unsigned char *) classes);
     }
 }
 
-
 extern "C" JNIEXPORT jint JNICALL
-Agent_OnLoad(JavaVM* vm, char* options, void* reserved) {
-    VM::init(vm);
-    return 0;
+Agent_OnLoad(JavaVM *vm, char *options, void *reserved) {
+    return VM::init(vm);
 }
 
 extern "C" JNIEXPORT jint JNICALL
-Agent_OnAttach(JavaVM* vm, char* options, void* reserved) {
+Agent_OnAttach(JavaVM *vm, char *options, void *reserved) {
     VM::attach(vm);
     int port = atoi(options);
     Profiler::_instance.init(port);
@@ -85,7 +108,7 @@ Agent_OnAttach(JavaVM* vm, char* options, void* reserved) {
 }
 
 extern "C" JNIEXPORT jint JNICALL
-JNI_OnLoad(JavaVM* vm, void* reserved) {
+JNI_OnLoad(JavaVM *vm, void *reserved) {
     VM::attach(vm);
     return JNI_VERSION_1_6;
 }

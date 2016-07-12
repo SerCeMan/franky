@@ -61,12 +61,10 @@ class JVMSession(private val remoteJVM: JVMRemoteInstance,
     //    }
 
     fun startProfiling() {
-        //        remoteJVM.send(START_PROFILING)
         isRunning = true
     }
 
     fun stopProfiling() {
-        //        remoteJVM.send(STOP_PROFILING)
         isRunning = false
         profilingResult().onNext(Protocol.Response.parseFrom(CodedInputStream.newInstance(FileInputStream("/home/serce/tmp/ResultData"))))
     }
