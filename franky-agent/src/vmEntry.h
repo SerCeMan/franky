@@ -15,11 +15,13 @@
  */
 
 #include <jvmti.h>
+#include <fstream>
 
 class VM {
   private:
     static JavaVM* _vm;
     static jvmtiEnv* _jvmti;
+    static std::ofstream fout;
 
     static void loadMethodIDs(jvmtiEnv* jvmti, jclass klass);
     static void loadAllMethodIDs(jvmtiEnv* jvmti);
@@ -27,7 +29,8 @@ class VM {
     static jvmtiError set_capabilities();
     static jvmtiError register_all_callback_functions();
 
-  public:
+
+public:
     static jint init(JavaVM* vm);
 
     static void attach(JavaVM* vm) {
@@ -59,7 +62,8 @@ class VM {
     static void JNICALL CompiledMethodLoad(jvmtiEnv* jvmti, jmethodID method,
                                            jint code_size, const void* code_addr,
                                            jint map_length, const jvmtiAddrLocationMap* map,
-                                           const void* compile_info) {
-        // Needed to enable DebugNonSafepoints info by default
-    }
+                                           const void* compile_info);
+
+    static void close();
+
 };

@@ -22,10 +22,13 @@
 
 JavaVM *VM::_vm;
 jvmtiEnv *VM::_jvmti;
-
+std::ofstream VM::fout;
 
 jint VM::init(JavaVM *vm) {
     _vm = vm;
+
+    fout.open("agent.log");
+    fout << "Agent loaded" << std::endl;
 
     jint result;
     result = _vm->GetEnv((void **) &_jvmti, JVMTI_VERSION_1_0);
@@ -33,14 +36,17 @@ jint VM::init(JavaVM *vm) {
         printf("ERROR: Unable to access JVMTI Version 1 (0x%x),"
                        " is your J2SE a 1.5 or newer version? JNIEnv's GetEnv() returned %d which is wrong.\n",
                JVMTI_VERSION_1, (int) result);
+        perror("AAAR");
         return result;
     }
 
     jvmtiError error;
     if ((error = set_capabilities()) != JVMTI_ERROR_NONE) {
+        perror("AAAR2");
         return error;
     }
     if ((error = register_all_callback_functions()) != JVMTI_ERROR_NONE) {
+        perror("AAAR3");
         return error;
     }
 
@@ -94,12 +100,64 @@ void VM::loadAllMethodIDs(jvmtiEnv *jvmti) {
     }
 }
 
-extern "C" JNIEXPORT jint JNICALL
+void VM::close() {
+    fout << "Closing VM" << std::endl;
+    fout.close();
+}
+
+
+/**
+ * Also needed to enable DebugNonSafepoints info by default
+ */
+void VM::CompiledMethodLoad(jvmtiEnv *jvmti, jmethodID method, jint code_size, const void *code_addr, jint map_length,
+                            const jvmtiAddrLocationMap *map, const void *compile_info) {
+    fout << "method compiled size=" << code_size << " addr=" << code_addr << std::endl;
+    if (compile_info != nullptr) {
+        const jvmtiCompiledMethodLoadRecordHeader *curr = static_cast<const jvmtiCompiledMethodLoadRecordHeader *>(compile_info);
+        fout << "Compiling info\n";
+        while (curr != nullptr) {
+            switch (curr->kind) {
+                case JVMTI_CMLR_DUMMY: {
+                    const jvmtiCompiledMethodLoadDummyRecord *dr = reinterpret_cast<const jvmtiCompiledMethodLoadDummyRecord *>(curr);
+                    fout << "Dummy record" << dr->message << std::endl;
+                    break;
+                }
+                case JVMTI_CMLR_INLINE_INFO: {
+                    const jvmtiCompiledMethodLoadInlineRecord *ir = reinterpret_cast<const jvmtiCompiledMethodLoadInlineRecord *>(curr);
+                    fout << "nInline Record numpcs=" << ir->numpcs << std::endl;
+                    if (ir->pcinfo != nullptr) {
+                        for (int i = 0; i < ir->numpcs; i++) {
+                            PCStackInfo pcrecord = (ir->pcinfo[i]);
+
+                            fout << "---------------------------------------\n";
+                            fout << "PC Descriptor: i(" << i << ") (pc=" << (pcrecord.pc) << ")" << std::endl;
+
+//                            PrintStackFrames(&pcrecord, jvmti, fp);
+
+                        }
+                        break;
+                    }
+                }
+                default: {
+                    fout << "Unrecognized Record: kind=" << curr->kind << std::endl;
+                    break;
+                }
+            }
+            curr = curr->next;
+        }
+    }
+
+}
+
+
+extern "C"
+JNIEXPORT jint JNICALL
 Agent_OnLoad(JavaVM *vm, char *options, void *reserved) {
     return VM::init(vm);
 }
 
-extern "C" JNIEXPORT jint JNICALL
+extern "C"
+JNIEXPORT jint JNICALL
 Agent_OnAttach(JavaVM *vm, char *options, void *reserved) {
     VM::attach(vm);
     int port = atoi(options);
@@ -107,8 +165,15 @@ Agent_OnAttach(JavaVM *vm, char *options, void *reserved) {
     return 0;
 }
 
-extern "C" JNIEXPORT jint JNICALL
+extern "C"
+JNIEXPORT jint JNICALL
 JNI_OnLoad(JavaVM *vm, void *reserved) {
     VM::attach(vm);
     return JNI_VERSION_1_6;
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Agent_OnUnload(JavaVM *vm) {
+    VM::close();
 }

@@ -45,6 +45,14 @@ class JVMAttachService(val jvmRemoteService: JVMRemoteService) {
     }
 }
 
+fun main(args: Array<String>) {
+    val vm = VirtualMachine.attach("25034")
+    thread(isDaemon = true, name = "VM Attach Thread pid=${vm.id()}") {
+        vm.loadAgentPath("/home/serce/git/franky/lib/libfrankyagent.so", "$FRANKY_PORT")
+    }
+    readLine()
+}
+
 class JVMSession(private val remoteJVM: JVMRemoteInstance,
                  private val vm: VirtualMachine) : AutoCloseable {
     private var isRunning = false;
