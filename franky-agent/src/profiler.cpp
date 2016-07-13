@@ -356,6 +356,7 @@ MethodInfo *fillMethodInfo(MethodInfo *methodInfo, const jmethodID &jmethod) {
     methodInfo->set_name(mn.name());
     methodInfo->set_holder(mn.holder());
     methodInfo->set_sig(mn.signature());
+    methodInfo->set_compiled(VM::get().compiles_info[jmethod] != nullptr);
     return methodInfo;
 }
 

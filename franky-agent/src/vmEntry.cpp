@@ -24,6 +24,7 @@ JavaVM *VM::_vm;
 jvmtiEnv *VM::_jvmti;
 std::ofstream VM::fout;
 
+
 jint VM::init(JavaVM *vm) {
     _vm = vm;
 
@@ -112,7 +113,13 @@ void VM::close() {
 void VM::CompiledMethodLoad(jvmtiEnv *jvmti, jmethodID method, jint code_size, const void *code_addr, jint map_length,
                             const jvmtiAddrLocationMap *map, const void *compile_info) {
     fout << "method compiled size=" << code_size << " addr=" << code_addr << std::endl;
-    if (compile_info != nullptr) {
+    auto &compiles_info = VM::get().compiles_info;
+    CompileInfo *info = compiles_info[method];
+    if (info == nullptr) {
+        compiles_info[method] = new CompileInfo(code_size, map_length, code_addr, compile_info);
+    }
+
+    /*if (compile_info != nullptr) {
         const jvmtiCompiledMethodLoadRecordHeader *curr = static_cast<const jvmtiCompiledMethodLoadRecordHeader *>(compile_info);
         fout << "Compiling info\n";
         while (curr != nullptr) {
@@ -145,7 +152,7 @@ void VM::CompiledMethodLoad(jvmtiEnv *jvmti, jmethodID method, jint code_size, c
             }
             curr = curr->next;
         }
-    }
+    }*/
 
 }
 

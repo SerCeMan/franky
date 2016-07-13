@@ -61,7 +61,7 @@ class FlameNode(val methodId: Long) {
 //////////////// components
 
 class FlameComponent(private val tree: FlameTree, val frameFactory: (Long) -> MethodInfo?) : JComponent() {
-    data class ComponentCoord(val x: Double, val width: Double, val level: Int, val parentWidth: Int) {
+    private data class ComponentCoord(val x: Double, val width: Double, val level: Int, val parentWidth: Int) {
         companion object {
             const val frameHeight = 20
         }
@@ -149,7 +149,7 @@ class FlameComponent(private val tree: FlameTree, val frameFactory: (Long) -> Me
         build(currentRoot, 0.0, 1.0, 0)
     }
 
-    private fun rootMethodInfo() = MethodInfo.newBuilder().setJMethodId(0).setHolder("").setName("").setSig("").build()
+    private fun rootMethodInfo() = MethodInfo.newBuilder().setJMethodId(0).setHolder("").setName("").setSig("").setCompiled(false).build()
 }
 
 
@@ -159,7 +159,7 @@ class FrameComponent(val methodInfo: MethodInfo) : BorderLayoutPanel() {
     private val expandBtn = JButton("expand").apply {
         addActionListener { expandPublisher.onNext(it) }
     }
-    private val methodBtn = JButton(methodInfo.name.toString()).apply {
+    private val methodBtn = JButton("${methodInfo.name} ${methodInfo.compiled}").apply {
         addActionListener {
             click()
         }
