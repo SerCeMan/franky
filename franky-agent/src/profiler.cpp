@@ -412,9 +412,9 @@ void Profiler::saveMethods(ProfilingInfo *info, std::unordered_set<jmethodID> &m
         if (samples == 0) break;
 
         jmethodID jmethod = _methods[i]._method;
-        MethodSampleInfo *sampleInfo = info->add_methods();
-        sampleInfo->set_call_count(samples);
-        sampleInfo->set_jmethodid(jMethodIdToId(jmethod));
+        MethodSampleInfo *sample_info = info->add_methods();
+        sample_info->set_call_count(samples);
+        sample_info->set_jmethodid(jMethodIdToId(jmethod));
         methods.insert(jmethod);
     }
 }

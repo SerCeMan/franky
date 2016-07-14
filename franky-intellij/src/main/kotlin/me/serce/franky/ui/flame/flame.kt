@@ -1,10 +1,15 @@
 package me.serce.franky.ui.flame
 
+import com.google.common.reflect.AbstractInvocationHandler
 import com.google.protobuf.CodedInputStream
 import com.intellij.debugger.engine.JVMNameUtil
 import com.intellij.openapi.project.ProjectManager
+import com.intellij.psi.EmptySubstitutor
 import com.intellij.psi.PsiManager
+import com.intellij.psi.PsiMethod
 import com.intellij.psi.util.ClassUtil
+import com.intellij.psi.util.PsiFormatUtil
+import com.intellij.psi.util.PsiFormatUtilBase
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.util.ui.components.BorderLayoutPanel
 import gnu.trove.TIntObjectHashMap
@@ -17,6 +22,8 @@ import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import java.awt.event.MouseListener
 import java.io.FileInputStream
+import java.lang.reflect.Method
+import java.lang.reflect.Proxy
 import java.util.*
 import javax.swing.*
 
@@ -40,7 +47,7 @@ class FlameTree(val sampleInfo: List<CallTraceSampleInfo>) {
         val coef = sample.callCount
 
         var node = root
-        for (frame in sample.frameList) {
+        for (frame in sample.frameList.reversed()) {
             val methodId = frame.jMethodId
             node = node.children.computeIfAbsent(methodId, {
                 FlameVertex(coef, FlameNode(frame.jMethodId))
@@ -152,32 +159,64 @@ class FlameComponent(private val tree: FlameTree, val frameFactory: (Long) -> Me
     private fun rootMethodInfo() = MethodInfo.newBuilder().setJMethodId(0).setHolder("").setName("").setSig("").setCompiled(false).build()
 }
 
+//////
+
+val NULL_PSI_METHOD = Proxy.newProxyInstance(PsiMethod::class.java.classLoader,
+        arrayOf(PsiMethod::class.java), object : AbstractInvocationHandler() {
+    override fun handleInvocation(p0: Any?, p1: Method?, p2: Array<out Any>?) = null
+}) as PsiMethod
 
 class FrameComponent(val methodInfo: MethodInfo) : BorderLayoutPanel() {
+    companion object {
+        val methodToPsiCache = HashMap<Long, PsiMethod>()
+    }
+
     val expandPublisher = PublishSubject<ActionEvent>()
+    val psiMethod: PsiMethod
+
+    init {
+        psiMethod = methodToPsiCache.getOrPut(methodInfo.jMethodId, {
+            findPsiMethod() ?: NULL_PSI_METHOD
+        })
+    }
+
 
     private val expandBtn = JButton("expand").apply {
         addActionListener { expandPublisher.onNext(it) }
     }
-    private val methodBtn = JButton("${methodInfo.name} ${methodInfo.compiled}").apply {
+
+    private val methodBtn = JButton(getMethodName()).apply {
         addActionListener {
             click()
         }
     }
 
     private fun click() {
+        val method = findPsiMethod()
+        method?.navigate(true)
+    }
+
+    private fun getMethodName() = when (psiMethod) {
+        NULL_PSI_METHOD -> ""
+        else -> PsiFormatUtil.formatMethod(psiMethod, EmptySubstitutor.EMPTY,
+                PsiFormatUtilBase.SHOW_NAME or
+                        PsiFormatUtilBase.SHOW_FQ_NAME or
+                        PsiFormatUtilBase.SHOW_PARAMETERS or
+                        PsiFormatUtilBase.SHOW_CONTAINING_CLASS,
+                PsiFormatUtilBase.SHOW_TYPE)
+    }
+
+    private fun findPsiMethod(): PsiMethod? {
         val projectManager = ProjectManager.getInstance()
-        val projects = projectManager.openProjects
-        if (projects.isNotEmpty()) {
-            val psiManager = PsiManager.getInstance(projects.first())
-            val method = ClassUtil.findPsiClass(psiManager, methodInfo.holder)
+        for (project in projectManager.openProjects) {
+            val psiManager = PsiManager.getInstance(project)
+            return ClassUtil.findPsiClass(psiManager, methodInfo.holder)
                     ?.findMethodsByName(methodInfo.name, false)
-                    ?.filter {
+                    ?.find {
                         methodInfo.sig == JVMNameUtil.getJVMSignature(it).getName(null)
                     }
-                    ?.firstOrNull()
-            method?.navigate(true)
         }
+        return null
     }
 
     init {
