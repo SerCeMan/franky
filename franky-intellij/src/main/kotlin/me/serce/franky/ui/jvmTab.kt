@@ -81,6 +81,7 @@ private class JvmTabView(val state: JvmTabState) : View {
                 val profResultViewModel = ProfResultViewModel(result)
                 addToCenter(JBScrollPane(profResultViewModel.createComponent()).apply {
                     verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS
+                    verticalScrollBar.unitIncrement = 16
                     border = BorderFactory.createLineBorder(Color.RED)
                 })
             }

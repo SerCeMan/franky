@@ -1,8 +1,7 @@
 package me.serce.franky.ui.flame
 
-import com.google.common.reflect.AbstractInvocationHandler
-import com.google.protobuf.CodedInputStream
 import com.intellij.debugger.engine.JVMNameUtil
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.psi.EmptySubstitutor
 import com.intellij.psi.PsiManager
@@ -10,22 +9,22 @@ import com.intellij.psi.PsiMethod
 import com.intellij.psi.util.ClassUtil
 import com.intellij.psi.util.PsiFormatUtil
 import com.intellij.psi.util.PsiFormatUtilBase
-import com.intellij.ui.components.JBScrollPane
+import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.components.BorderLayoutPanel
-import gnu.trove.TIntObjectHashMap
-import me.serce.franky.Protocol
-import me.serce.franky.Protocol.*
+import me.serce.franky.Protocol.CallTraceSampleInfo
+import me.serce.franky.Protocol.MethodInfo
+import me.serce.franky.ui.flame.NullPsiMethod.NULL_PSI_METHOD
 import rx.lang.kotlin.PublishSubject
-import java.awt.*
+import java.awt.Color
+import java.awt.Dimension
+import java.awt.Graphics
+import java.awt.Point
 import java.awt.event.ActionEvent
-import java.awt.event.MouseAdapter
-import java.awt.event.MouseEvent
-import java.awt.event.MouseListener
-import java.io.FileInputStream
-import java.lang.reflect.Method
-import java.lang.reflect.Proxy
+import java.text.NumberFormat
 import java.util.*
-import javax.swing.*
+import javax.swing.BorderFactory
+import javax.swing.JButton
+import javax.swing.JComponent
 
 fun CallTraceSampleInfo.validate() {
     if (frameList.isEmpty()) {
@@ -34,7 +33,7 @@ fun CallTraceSampleInfo.validate() {
 }
 
 class FlameTree(val sampleInfo: List<CallTraceSampleInfo>) {
-    val root: FlameNode = FlameNode(0)
+    val root: FlameNode = FlameNode(0, null)
 
     init {
         for (sample in sampleInfo) {
@@ -50,7 +49,7 @@ class FlameTree(val sampleInfo: List<CallTraceSampleInfo>) {
         for (frame in sample.frameList.reversed()) {
             val methodId = frame.jMethodId
             node = node.children.computeIfAbsent(methodId, {
-                FlameVertex(coef, FlameNode(frame.jMethodId))
+                FlameVertex(coef, FlameNode(frame.jMethodId, node))
             }).node
         }
         node.selfCost += coef
@@ -59,7 +58,7 @@ class FlameTree(val sampleInfo: List<CallTraceSampleInfo>) {
 
 data class FlameVertex(var cost: Int, val node: FlameNode)
 
-class FlameNode(val methodId: Long) {
+class FlameNode(val methodId: Long, val parent: FlameNode?) {
     var selfCost: Int = 0;
     val children: HashMap<Long, FlameVertex> = hashMapOf()
 }
@@ -80,7 +79,7 @@ class FlameComponent(private val tree: FlameTree, val frameFactory: (Long) -> Me
     }
 
     val methodInfoSubject = PublishSubject<MethodInfo>()
-    private val nodeToComp = hashMapOf<FlameNode, JComponent>()
+    private val nodeToComp = hashMapOf<FlameNode, FrameComponent>()
     var currentRoot = tree.root
     var maxHeight = 0
 
@@ -94,15 +93,7 @@ class FlameComponent(private val tree: FlameTree, val frameFactory: (Long) -> Me
         if (width <= 0) {
             return
         }
-        val coord = ComponentCoord(begin, width, level, getWidth())
-        nodeToComp.getOrPut(node, { makeFrameComponent(node) })
-                .apply {
-                    size = Dimension(coord.getWidth(), coord.getHeight())
-                    location = Point(coord.getX(), coord.getY())
-                }
-        if (coord.getY() >= maxHeight) {
-            maxHeight = coord.getY()
-        }
+        recalculateComponentCoords(begin, level, node, width, false)
 
         val totalCost = node.selfCost + node.children.map { it.value.cost }.sum()
         var nodeBegin = begin
@@ -113,9 +104,46 @@ class FlameComponent(private val tree: FlameTree, val frameFactory: (Long) -> Me
         }
     }
 
-    private fun makeFrameComponent(node: FlameNode): FrameComponent {
+    private fun recalculateComponentCoords(begin: Double, level: Int, node: FlameNode, width: Double, collapsed: Boolean) {
+        val component = nodeToComp.getOrPut(node, { makeFrameComponent(node, width) })
+        val coord = ComponentCoord(begin, width, level, getWidth())
+        component.apply {
+            size = Dimension(coord.getWidth(), coord.getHeight())
+            location = Point(coord.getX(), coord.getY())
+            if(collapsed) {
+                border = BorderFactory.createLineBorder(Color.RED)
+            } else {
+                border = BorderFactory.createLineBorder(Color.BLACK)
+            }
+        }
+        if (coord.getY() >= maxHeight) {
+            maxHeight = coord.getY()
+        }
+    }
+
+    private fun calcTop(currentRoot: FlameNode): Int {
+        fun countLevel(currentRoot: FlameNode): Int {
+            var l = 0
+            var curNode = currentRoot.parent
+            while (curNode != null) {
+                l++; curNode = curNode.parent
+            }
+            return l
+        }
+
+        val allLevel = countLevel(currentRoot)
+        var level = allLevel
+        var node: FlameNode? = currentRoot
+        while (node?.parent != null) {
+            recalculateComponentCoords(0.0, --level, node!!.parent!!, 1.0, true)
+            node = node.parent
+        }
+        return allLevel
+    }
+
+    private fun makeFrameComponent(node: FlameNode, percentage: Double): FrameComponent {
         val methodInfo = frameFactory(node.methodId) ?: rootMethodInfo()
-        return FrameComponent(methodInfo).apply {
+        return FrameComponent(methodInfo, percentage).apply {
             this@FlameComponent.add(this)
             expandPublisher.subscribe {
                 resetNode(node)
@@ -123,9 +151,7 @@ class FlameComponent(private val tree: FlameTree, val frameFactory: (Long) -> Me
         }
     }
 
-    private fun resetToRoot() {
-        currentRoot = tree.root
-    }
+    private fun resetToRoot() = resetNode(tree.root)
 
     private fun resetNode(node: FlameNode) {
         currentRoot = node
@@ -137,6 +163,7 @@ class FlameComponent(private val tree: FlameTree, val frameFactory: (Long) -> Me
         validate()
         repaint()
     }
+
 
 
     override fun paintComponent(g: Graphics) {
@@ -153,22 +180,22 @@ class FlameComponent(private val tree: FlameTree, val frameFactory: (Long) -> Me
 
     private fun recalcPositions() {
         maxHeight = 0
-        build(currentRoot, 0.0, 1.0, 0)
+        val level = calcTop(currentRoot)
+        build(currentRoot, 0.0, 1.0, level)
     }
 
-    private fun rootMethodInfo() = MethodInfo.newBuilder().setJMethodId(0).setHolder("").setName("").setSig("").setCompiled(false).build()
+    private fun rootMethodInfo() = MethodInfo.newBuilder().setJMethodId(0).setHolder("").setName("all").setSig("").setCompiled(false).build()
 }
 
 //////
 
-val NULL_PSI_METHOD = Proxy.newProxyInstance(PsiMethod::class.java.classLoader,
-        arrayOf(PsiMethod::class.java), object : AbstractInvocationHandler() {
-    override fun handleInvocation(p0: Any?, p1: Method?, p2: Array<out Any>?) = null
-}) as PsiMethod
 
-class FrameComponent(val methodInfo: MethodInfo) : BorderLayoutPanel() {
+class FrameComponent(val methodInfo: MethodInfo, val percentage: Double) : BorderLayoutPanel() {
     companion object {
         val methodToPsiCache = HashMap<Long, PsiMethod>()
+        val percentFormat = NumberFormat.getPercentInstance(Locale.US).apply {
+            maximumFractionDigits = 2
+        }
     }
 
     val expandPublisher = PublishSubject<ActionEvent>()
@@ -185,10 +212,11 @@ class FrameComponent(val methodInfo: MethodInfo) : BorderLayoutPanel() {
         addActionListener { expandPublisher.onNext(it) }
     }
 
-    private val methodBtn = JButton(getMethodName()).apply {
-        addActionListener {
-            click()
-        }
+    private val methodBtn = JBLabel("${getMethodName()} (${percentFormat.format(percentage)})").apply {
+
+        //        addActionListener {
+        //            click()
+        //        }
     }
 
     private fun click() {
@@ -197,7 +225,7 @@ class FrameComponent(val methodInfo: MethodInfo) : BorderLayoutPanel() {
     }
 
     private fun getMethodName() = when (psiMethod) {
-        NULL_PSI_METHOD -> ""
+        NULL_PSI_METHOD -> formatMethodInfo()
         else -> PsiFormatUtil.formatMethod(psiMethod, EmptySubstitutor.EMPTY,
                 PsiFormatUtilBase.SHOW_NAME or
                         PsiFormatUtilBase.SHOW_FQ_NAME or
@@ -206,7 +234,12 @@ class FrameComponent(val methodInfo: MethodInfo) : BorderLayoutPanel() {
                 PsiFormatUtilBase.SHOW_TYPE)
     }
 
+    private fun formatMethodInfo() = "${methodInfo.holder}.${methodInfo.name}"
+
     private fun findPsiMethod(): PsiMethod? {
+        if (ApplicationManager.getApplication() == null) {
+            return null;
+        }
         val projectManager = ProjectManager.getInstance()
         for (project in projectManager.openProjects) {
             val psiManager = PsiManager.getInstance(project)
@@ -222,35 +255,5 @@ class FrameComponent(val methodInfo: MethodInfo) : BorderLayoutPanel() {
     init {
         addToCenter(methodBtn)
         addToRight(expandBtn)
-    }
-}
-
-
-fun main(args: Array<String>) {
-    SwingUtilities.invokeLater {
-        val result = Protocol.Response.parseFrom(CodedInputStream.newInstance(FileInputStream("/home/serce/tmp/ResultData")))
-        val profInfo = result.profInfo
-        val samples = profInfo.samplesList
-        val methods: Map<Long, MethodInfo> = profInfo.methodInfosList.associateBy({ it.jMethodId }, { it })
-
-
-        val tree = FlameTree(samples)
-        val panel = JFrame().apply {
-            defaultCloseOperation = JFrame.EXIT_ON_CLOSE
-            pack()
-            size = Dimension(800, 600)
-            contentPane.apply {
-                add(JScrollPane(FlameComponent(tree, { methods[it] }).apply {
-                    size = Dimension(800, 600)
-                    methodInfoSubject.subscribe {
-                        println("CLICK $it")
-                    }
-                }).apply {
-                    verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS
-                })
-            }
-            isVisible = true
-            repaint()
-        }
     }
 }
