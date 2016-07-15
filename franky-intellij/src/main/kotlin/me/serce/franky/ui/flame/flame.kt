@@ -1,6 +1,7 @@
 package me.serce.franky.ui.flame
 
 import com.intellij.debugger.engine.JVMNameUtil
+import com.intellij.icons.AllIcons
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.psi.EmptySubstitutor
@@ -10,6 +11,7 @@ import com.intellij.psi.util.ClassUtil
 import com.intellij.psi.util.PsiFormatUtil
 import com.intellij.psi.util.PsiFormatUtilBase
 import com.intellij.ui.components.JBLabel
+import com.intellij.util.ui.JBImageIcon
 import com.intellij.util.ui.components.BorderLayoutPanel
 import me.serce.franky.Protocol.CallTraceSampleInfo
 import me.serce.franky.Protocol.MethodInfo
@@ -20,12 +22,10 @@ import java.awt.*
 import java.awt.event.ActionEvent
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
+import java.awt.image.BufferedImage
 import java.text.NumberFormat
 import java.util.*
-import javax.swing.BorderFactory
-import javax.swing.JButton
-import javax.swing.JComponent
-import javax.swing.JPanel
+import javax.swing.*
 
 fun CallTraceSampleInfo.validate() {
     if (frameList.isEmpty()) {
@@ -111,6 +111,10 @@ class FlameComponent(private val tree: FlameTree, val frameFactory: (Long) -> Me
         component.apply {
             size = Dimension(coord.getWidth(), coord.getHeight())
             location = Point(coord.getX(), coord.getY())
+            //            background = when {
+            //                collapsed -> Color(0, 0, 0, 64)
+            //                else -> null
+            //            }
             border = BorderFactory.createLineBorder(when {
                 collapsed -> Color.RED
                 else -> Color.BLACK
@@ -207,12 +211,8 @@ class FrameComponent(val methodInfo: MethodInfo, val percentage: Double) : Borde
     }
 
 
-    private val expandBtn = JButton("<->").apply {
-        addActionListener { expandPublisher.onNext(it) }
-    }
-
     private val methodBtn = JBLabel("${getMethodName()} (${percentFormat.format(percentage)})").apply {
-        border = BorderFactory.createLineBorder(Color.RED)
+        //border = BorderFactory.createLineBorder(Color.RED)
         if (psiMethod == NULL_PSI_METHOD) {
             addMouseListener(MouseClickListener {
                 click()
@@ -257,22 +257,35 @@ class FrameComponent(val methodInfo: MethodInfo, val percentage: Double) : Borde
 
     init {
         addToCenter(JPanel().apply {
-            addMouseListener(object: MouseAdapter() {
-                override fun mouseClicked(e: MouseEvent) {
-                    expandPublisher.onNext(e)
-                }
+            addMouseListener(object : MouseAdapter() {
+                override fun mouseClicked(e: MouseEvent) = expandPublisher.onNext(e)
 
-                override fun mouseEntered(e: MouseEvent?) {
+                override fun mouseEntered(e: MouseEvent) {
                     border = BorderFactory.createLineBorder(Color.DARK_GRAY, 1)
                 }
 
-                override fun mouseExited(e: MouseEvent?) {
+                override fun mouseExited(e: MouseEvent) {
                     border = null
-
                 }
             })
             add(methodBtn)
         })
-        //        addToRight(expandBtn)
+        if (hasWarning() || true) {
+            addToRight(createWarningLabel())
+        }
+    }
+
+    private fun hasWarning() = !methodInfo.hasCompiled()
+
+    private fun createWarningLabel(): JLabel {
+        var icon = AllIcons.General.BalloonInformation
+        if (icon.iconHeight == 1) {
+            icon = ImageIcon(BufferedImage(16, 16, BufferedImage.TYPE_INT_RGB))
+        }
+        ToolTipManager.sharedInstance().initialDelay = 0;
+        ToolTipManager.sharedInstance().dismissDelay = 500;
+        return JBLabel(icon, JLabel.CENTER).apply {
+            toolTipText = "Method hasn't been compiled"
+        }
     }
 }
