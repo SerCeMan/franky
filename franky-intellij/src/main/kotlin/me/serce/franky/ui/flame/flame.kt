@@ -13,18 +13,19 @@ import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.components.BorderLayoutPanel
 import me.serce.franky.Protocol.CallTraceSampleInfo
 import me.serce.franky.Protocol.MethodInfo
+import me.serce.franky.ui.MouseClickListener
 import me.serce.franky.ui.flame.NullPsiMethod.NULL_PSI_METHOD
 import rx.lang.kotlin.PublishSubject
-import java.awt.Color
-import java.awt.Dimension
-import java.awt.Graphics
-import java.awt.Point
+import java.awt.*
 import java.awt.event.ActionEvent
+import java.awt.event.MouseAdapter
+import java.awt.event.MouseEvent
 import java.text.NumberFormat
 import java.util.*
 import javax.swing.BorderFactory
 import javax.swing.JButton
 import javax.swing.JComponent
+import javax.swing.JPanel
 
 fun CallTraceSampleInfo.validate() {
     if (frameList.isEmpty()) {
@@ -110,11 +111,10 @@ class FlameComponent(private val tree: FlameTree, val frameFactory: (Long) -> Me
         component.apply {
             size = Dimension(coord.getWidth(), coord.getHeight())
             location = Point(coord.getX(), coord.getY())
-            if(collapsed) {
-                border = BorderFactory.createLineBorder(Color.RED)
-            } else {
-                border = BorderFactory.createLineBorder(Color.BLACK)
-            }
+            border = BorderFactory.createLineBorder(when {
+                collapsed -> Color.RED
+                else -> Color.BLACK
+            })
         }
         if (coord.getY() >= maxHeight) {
             maxHeight = coord.getY()
@@ -165,7 +165,6 @@ class FlameComponent(private val tree: FlameTree, val frameFactory: (Long) -> Me
     }
 
 
-
     override fun paintComponent(g: Graphics) {
         recalcPositions()
         super.paintComponent(g)
@@ -184,7 +183,7 @@ class FlameComponent(private val tree: FlameTree, val frameFactory: (Long) -> Me
         build(currentRoot, 0.0, 1.0, level)
     }
 
-    private fun rootMethodInfo() = MethodInfo.newBuilder().setJMethodId(0).setHolder("").setName("all").setSig("").setCompiled(false).build()
+    private fun rootMethodInfo() = MethodInfo.newBuilder().setJMethodId(0).setHolder("reset").setName("all").setSig("").setCompiled(false).build()
 }
 
 //////
@@ -198,7 +197,7 @@ class FrameComponent(val methodInfo: MethodInfo, val percentage: Double) : Borde
         }
     }
 
-    val expandPublisher = PublishSubject<ActionEvent>()
+    val expandPublisher = PublishSubject<AWTEvent>()
     val psiMethod: PsiMethod
 
     init {
@@ -208,15 +207,19 @@ class FrameComponent(val methodInfo: MethodInfo, val percentage: Double) : Borde
     }
 
 
-    private val expandBtn = JButton("expand").apply {
+    private val expandBtn = JButton("<->").apply {
         addActionListener { expandPublisher.onNext(it) }
     }
 
     private val methodBtn = JBLabel("${getMethodName()} (${percentFormat.format(percentage)})").apply {
-
-        //        addActionListener {
-        //            click()
-        //        }
+        border = BorderFactory.createLineBorder(Color.RED)
+        if (psiMethod == NULL_PSI_METHOD) {
+            addMouseListener(MouseClickListener {
+                click()
+            })
+            foreground = Color(18, 69, 120)
+            cursor = Cursor(Cursor.HAND_CURSOR)
+        }
     }
 
     private fun click() {
@@ -253,7 +256,23 @@ class FrameComponent(val methodInfo: MethodInfo, val percentage: Double) : Borde
     }
 
     init {
-        addToCenter(methodBtn)
-        addToRight(expandBtn)
+        addToCenter(JPanel().apply {
+            addMouseListener(object: MouseAdapter() {
+                override fun mouseClicked(e: MouseEvent) {
+                    expandPublisher.onNext(e)
+                }
+
+                override fun mouseEntered(e: MouseEvent?) {
+                    border = BorderFactory.createLineBorder(Color.DARK_GRAY, 1)
+                }
+
+                override fun mouseExited(e: MouseEvent?) {
+                    border = null
+
+                }
+            })
+            add(methodBtn)
+        })
+        //        addToRight(expandBtn)
     }
 }
