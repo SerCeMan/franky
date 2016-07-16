@@ -16,7 +16,10 @@ import javax.swing.SwingUtilities
  * Created by Sergey.Tselovalnikov on 7/15/16.
  */
 class FrameComponentTest : IdeaTestCase() {
-    fun testComponent() {
+    fun testEmpty() {
+    }
+
+    fun itestComponent() {
         SwingUtilities.invokeLater {
             val result = Protocol.Response.parseFrom(CodedInputStream.newInstance(FileInputStream("/home/serce/tmp/ResultData")))
             val profInfo = result.profInfo
