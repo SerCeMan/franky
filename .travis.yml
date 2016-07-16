@@ -1,3 +1,5 @@
+sudo: required
+dist: trusty
 language: java
 install: cd franky-agent/ && mkdir -p out && cd out && cmake .. && make
 script: ./gradlew check
