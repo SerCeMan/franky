@@ -1,9 +1,8 @@
 = Franky
+
 Franky - a simple profiler that always speaks frankly
 
 == Project Goals
-
-Main goal of the project is to provide easy way to manipulate VMware vSphere using jclouds.
 
 == Rationale
 

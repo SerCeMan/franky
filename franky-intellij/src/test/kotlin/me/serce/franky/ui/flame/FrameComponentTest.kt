@@ -19,7 +19,7 @@ class FrameComponentTest : IdeaTestCase() {
     fun testEmpty() {
     }
 
-    fun itestComponent() {
+    fun testComponent() {
         SwingUtilities.invokeLater {
             val result = Protocol.Response.parseFrom(CodedInputStream.newInstance(FileInputStream("/home/serce/tmp/ResultData")))
             val profInfo = result.profInfo
