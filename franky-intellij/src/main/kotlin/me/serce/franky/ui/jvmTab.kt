@@ -73,11 +73,11 @@ private class JvmTabView(val state: JvmTabState) : View {
         state.profilingResult.subscribeUI { result: Protocol.Response ->
             tabPanel.apply {
                 // TODO DEV-MODE
-//                                FileOutputStream("/home/serce/tmp/ResultData").use { fos ->
-//                                    val out = CodedOutputStream.newInstance(fos)
-//                                    result.writeTo(out)
-//                                    out.flush()
-//                                }
+                FileOutputStream("/home/serce/tmp/ResultData").use { fos ->
+                    val out = CodedOutputStream.newInstance(fos)
+                    result.writeTo(out)
+                    out.flush()
+                }
                 val profResultViewModel = ProfResultViewModel(result)
                 addToCenter(JBScrollPane(profResultViewModel.createComponent()).apply {
                     verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS

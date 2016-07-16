@@ -57,26 +57,26 @@ class JVMSession(private val remoteJVM: JVMRemoteInstance,
                  private val vm: VirtualMachine) : AutoCloseable {
     private var isRunning = false;
 
-//
-//    fun startProfiling() {
-//        remoteJVM.send(START_PROFILING)
-//        isRunning = true
-//    }
-//
-//    fun stopProfiling() {
-//        remoteJVM.send(STOP_PROFILING)
-//        isRunning = false
-//    }
 
-    // todo DEV-MODE
     fun startProfiling() {
+        remoteJVM.send(START_PROFILING)
         isRunning = true
     }
 
     fun stopProfiling() {
+        remoteJVM.send(STOP_PROFILING)
         isRunning = false
-        profilingResult().onNext(Protocol.Response.parseFrom(CodedInputStream.newInstance(FileInputStream("/home/serce/tmp/ResultData"))))
     }
+
+    // todo DEV-MODE
+//    fun startProfiling() {
+//        isRunning = true
+//    }
+//
+//    fun stopProfiling() {
+//        isRunning = false
+//        profilingResult().onNext(Protocol.Response.parseFrom(CodedInputStream.newInstance(FileInputStream("/home/serce/tmp/ResultData"))))
+//    }
 
 
     fun profilingResult() = remoteJVM.response

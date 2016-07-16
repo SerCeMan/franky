@@ -2,7 +2,6 @@ package me.serce.franky.ui.flame
 
 import com.intellij.debugger.engine.JVMNameUtil
 import com.intellij.icons.AllIcons
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.psi.EmptySubstitutor
 import com.intellij.psi.PsiManager
@@ -11,61 +10,18 @@ import com.intellij.psi.util.ClassUtil
 import com.intellij.psi.util.PsiFormatUtil
 import com.intellij.psi.util.PsiFormatUtilBase
 import com.intellij.ui.components.JBLabel
-import com.intellij.util.ui.JBImageIcon
 import com.intellij.util.ui.components.BorderLayoutPanel
-import me.serce.franky.Protocol.CallTraceSampleInfo
 import me.serce.franky.Protocol.MethodInfo
 import me.serce.franky.ui.MouseClickListener
 import me.serce.franky.ui.flame.NullPsiMethod.NULL_PSI_METHOD
 import rx.lang.kotlin.PublishSubject
 import java.awt.*
-import java.awt.event.ActionEvent
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import java.awt.image.BufferedImage
 import java.text.NumberFormat
 import java.util.*
 import javax.swing.*
-
-fun CallTraceSampleInfo.validate() {
-    if (frameList.isEmpty()) {
-        throw IllegalArgumentException("Empty trace sample $this")
-    }
-}
-
-class FlameTree(val sampleInfo: List<CallTraceSampleInfo>) {
-    val root: FlameNode = FlameNode(0, null)
-
-    init {
-        for (sample in sampleInfo) {
-            sample.validate()
-            addSampleToTree(sample)
-        }
-    }
-
-    private fun addSampleToTree(sample: CallTraceSampleInfo) {
-        val coef = sample.callCount
-
-        var node = root
-        for (frame in sample.frameList.reversed()) {
-            val methodId = frame.jMethodId
-            node = node.children.computeIfAbsent(methodId, {
-                FlameVertex(coef, FlameNode(frame.jMethodId, node))
-            }).node
-        }
-        node.selfCost += coef
-    }
-}
-
-data class FlameVertex(var cost: Int, val node: FlameNode)
-
-class FlameNode(val methodId: Long, val parent: FlameNode?) {
-    var selfCost: Int = 0;
-    val children: HashMap<Long, FlameVertex> = hashMapOf()
-}
-
-
-//////////////// components
 
 class FlameComponent(private val tree: FlameTree, val frameFactory: (Long) -> MethodInfo?) : JComponent() {
     private data class ComponentCoord(val x: Double, val width: Double, val level: Int, val parentWidth: Int) {
@@ -111,10 +67,11 @@ class FlameComponent(private val tree: FlameTree, val frameFactory: (Long) -> Me
         component.apply {
             size = Dimension(coord.getWidth(), coord.getHeight())
             location = Point(coord.getX(), coord.getY())
-            //            background = when {
-            //                collapsed -> Color(0, 0, 0, 64)
-            //                else -> null
-            //            }
+//            background = when {
+//                collapsed -> Color.BLACK
+//                else -> null
+//            }
+//            isOpaque = true
             border = BorderFactory.createLineBorder(when {
                 collapsed -> Color.RED
                 else -> Color.BLACK
@@ -190,9 +147,10 @@ class FlameComponent(private val tree: FlameTree, val frameFactory: (Long) -> Me
     private fun rootMethodInfo() = MethodInfo.newBuilder().setJMethodId(0).setHolder("reset").setName("all").setSig("").setCompiled(false).build()
 }
 
-//////
 
-
+/**
+ * Panel representing one cell (frame)
+ */
 class FrameComponent(val methodInfo: MethodInfo, val percentage: Double) : BorderLayoutPanel() {
     companion object {
         val methodToPsiCache = HashMap<Long, PsiMethod>()
@@ -213,7 +171,7 @@ class FrameComponent(val methodInfo: MethodInfo, val percentage: Double) : Borde
 
     private val methodBtn = JBLabel("${getMethodName()} (${percentFormat.format(percentage)})").apply {
         //border = BorderFactory.createLineBorder(Color.RED)
-        if (psiMethod == NULL_PSI_METHOD) {
+        if (psiMethod != NULL_PSI_METHOD) {
             addMouseListener(MouseClickListener {
                 click()
             })
@@ -240,9 +198,6 @@ class FrameComponent(val methodInfo: MethodInfo, val percentage: Double) : Borde
     private fun formatMethodInfo() = "${methodInfo.holder}.${methodInfo.name}"
 
     private fun findPsiMethod(): PsiMethod? {
-        if (ApplicationManager.getApplication() == null) {
-            return null;
-        }
         val projectManager = ProjectManager.getInstance()
         for (project in projectManager.openProjects) {
             val psiManager = PsiManager.getInstance(project)
@@ -278,12 +233,10 @@ class FrameComponent(val methodInfo: MethodInfo, val percentage: Double) : Borde
     private fun hasWarning() = !methodInfo.hasCompiled()
 
     private fun createWarningLabel(): JLabel {
-        var icon = AllIcons.General.BalloonInformation
+        var icon = AllIcons.General.BalloonWarning
         if (icon.iconHeight == 1) {
             icon = ImageIcon(BufferedImage(16, 16, BufferedImage.TYPE_INT_RGB))
         }
-        ToolTipManager.sharedInstance().initialDelay = 0;
-        ToolTipManager.sharedInstance().dismissDelay = 500;
         return JBLabel(icon, JLabel.CENTER).apply {
             toolTipText = "Method hasn't been compiled"
         }
