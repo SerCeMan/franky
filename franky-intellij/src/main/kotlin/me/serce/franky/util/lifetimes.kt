@@ -1,7 +1,5 @@
 package me.serce.franky.util
 
-import com.google.common.base.Preconditions
-
 
 class Lifetime internal constructor(eternal: Boolean = false) {
     companion object {
@@ -16,14 +14,13 @@ class Lifetime internal constructor(eternal: Boolean = false) {
     }
 
     val isEternal: Boolean = eternal
-    @Volatile var isTerminated: Boolean = false
+    @Volatile
+    var isTerminated: Boolean = false
         private set
 
     private val actions = arrayListOf<() -> Unit>()
 
-    operator fun plusAssign(action: () -> Unit) {
-        add(action)
-    }
+    operator fun plusAssign(action: () -> Unit) = add(action)
 
     fun terminate() {
         isTerminated = true;
@@ -41,10 +38,10 @@ class Lifetime internal constructor(eternal: Boolean = false) {
         actions.add (action)
     }
 
-    //short-living lifetimes could explode action termination queue, so we need to drop them after termination
     internal fun addNested(def: Lifetime) {
-        if (def.isTerminated) return;
-
+        if (def.isTerminated) {
+            return
+        }
         val action = { def.terminate() }
         add(action)
         def.add({ actions.remove(action) })
@@ -53,19 +50,3 @@ class Lifetime internal constructor(eternal: Boolean = false) {
 
 fun Lifetime.create(): Lifetime = Lifetime.create(this)
 
-fun main(args: Array<String>) {
-    val str = StringBuilder()
-
-    val def = Lifetime.create(Lifetime.Eternal)
-
-    def += { str.append("World") }
-    def += { str.append("Hello") }
-    val def2 = def.create()
-    def2 += { str.append("1") }
-    def2 += { str.append("2") }
-    def.terminate()
-
-    fun check(ex: Boolean) = if (!ex) throw RuntimeException("ERROR") else Unit;
-
-    check(str.toString() == "21HelloWorld")
-}
