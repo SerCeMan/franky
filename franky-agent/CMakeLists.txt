@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.2)
 project(franky)
 
 set(JAVA_HOME $ENV{JAVA_HOME})
