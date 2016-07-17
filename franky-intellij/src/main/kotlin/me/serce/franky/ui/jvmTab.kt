@@ -7,8 +7,6 @@ import me.serce.franky.Protocol
 import me.serce.franky.jvm.AttachableJVM
 import me.serce.franky.jvm.JVMAttachService
 import me.serce.franky.jvm.JVMSession
-import me.serce.franky.ui.flame.FlameComponent
-import me.serce.franky.ui.flame.FlameTree
 import me.serce.franky.util.Lifetime
 import me.serce.franky.util.subscribeUI
 import rx.lang.kotlin.AsyncSubject
@@ -16,7 +14,10 @@ import rx.lang.kotlin.PublishSubject
 import java.awt.Color
 import java.awt.FlowLayout
 import java.io.FileOutputStream
-import javax.swing.*
+import javax.swing.BorderFactory
+import javax.swing.JButton
+import javax.swing.JTextArea
+import javax.swing.ScrollPaneConstants
 
 class JvmTabViewModel(val lifetime: Lifetime, vm: AttachableJVM) : ViewModel {
     private val state = JvmTabState()
@@ -36,16 +37,16 @@ private class JvmTabView(val state: JvmTabState) : View {
     val tabPanel = BorderLayoutPanel()
 
     val startButton = JButton("Start profiling")
-    val stopButton = JButton().apply {
+    val stopButton = JButton {
         text = "Stop profiling"
         isEnabled = false
     }
-    val buttonsPanel = JPanel().apply {
+
+    val buttonsPanel = JPanel {
         layout = FlowLayout()
         add(startButton)
         add(stopButton)
     }
-    val textAres = JTextArea()
 
     init {
         val throbber = JTextArea("Awaiting connection")

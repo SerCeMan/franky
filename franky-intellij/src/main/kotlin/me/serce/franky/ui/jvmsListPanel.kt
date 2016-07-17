@@ -5,6 +5,7 @@ import me.serce.franky.jvm.JVMAttachService
 import me.serce.franky.util.Lifetime
 import me.serce.franky.util.subscribeUI
 import rx.Observable
+import rx.Subscription
 import rx.lang.kotlin.PublishSubject
 import rx.schedulers.Schedulers
 import java.awt.Component
@@ -41,13 +42,12 @@ class JvmsListViewModelImpl(val lifetime: Lifetime) : JvmsListViewModel {
         val attachService = JVMAttachService.getInstance()
 
         init {
-            // todo lifetime
-            lifetime
             Observable.interval(0, 5, TimeUnit.SECONDS, Schedulers.io())
                     .map { attachService.attachableJVMs() }
                     .subscribe {
                         state.jvms.onNext(it)
                     }
+                    .unsubscibeOn(lifetime)
         }
     }
 
@@ -89,4 +89,8 @@ class JvmsListViewModelImpl(val lifetime: Lifetime) : JvmsListViewModel {
             add(jvmsList)
         }
     }
+}
+
+fun Subscription.unsubscibeOn(lifetime: Lifetime): Subscription = apply {
+    lifetime += { unsubscribe() }
 }

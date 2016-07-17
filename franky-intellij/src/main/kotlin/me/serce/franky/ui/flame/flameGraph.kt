@@ -12,6 +12,7 @@ import com.intellij.psi.util.PsiFormatUtilBase
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.components.BorderLayoutPanel
 import me.serce.franky.Protocol.MethodInfo
+import me.serce.franky.ui.JBLabel
 import me.serce.franky.ui.MouseClickListener
 import me.serce.franky.ui.flame.NullPsiMethod.NULL_PSI_METHOD
 import rx.lang.kotlin.PublishSubject
@@ -225,7 +226,7 @@ class FrameComponent(val methodInfo: MethodInfo, val percentage: Double) : Borde
             })
             add(methodBtn)
         })
-        if (hasWarning() || true) {
+        if (hasWarning()/* || true*/) {
             addToRight(createWarningLabel())
         }
     }
@@ -233,11 +234,14 @@ class FrameComponent(val methodInfo: MethodInfo, val percentage: Double) : Borde
     private fun hasWarning() = !methodInfo.hasCompiled()
 
     private fun createWarningLabel(): JLabel {
-        var icon = AllIcons.General.BalloonWarning
-        if (icon.iconHeight == 1) {
-            icon = ImageIcon(BufferedImage(16, 16, BufferedImage.TYPE_INT_RGB))
+        var warningIcon = AllIcons.General.BalloonWarning
+        if (warningIcon.iconHeight == 1) {
+            // test mode
+            warningIcon = ImageIcon(BufferedImage(16, 16, BufferedImage.TYPE_INT_RGB))
         }
-        return JBLabel(icon, JLabel.CENTER).apply {
+        return JBLabel {
+            this.icon = warningIcon
+            horizontalAlignment = JLabel.CENTER
             toolTipText = "Method hasn't been compiled"
         }
     }
