@@ -1,5 +1,8 @@
 package me.serce.franky.util
 
+import com.intellij.openapi.Disposable
+import com.intellij.openapi.util.Disposer
+
 
 class Lifetime internal constructor(eternal: Boolean = false) {
     companion object {
@@ -50,3 +53,8 @@ class Lifetime internal constructor(eternal: Boolean = false) {
 
 fun Lifetime.create(): Lifetime = Lifetime.create(this)
 
+fun Lifetime.toDisposable(): Disposable {
+    val disposable = Disposer.newDisposable()
+    this += { Disposer.dispose(disposable) }
+    return disposable
+}
