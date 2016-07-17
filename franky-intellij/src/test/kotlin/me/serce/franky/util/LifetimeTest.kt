@@ -1,9 +1,37 @@
 package me.serce.franky.util
 
-import org.junit.Assert.*
+import com.intellij.openapi.Disposable
+import com.intellij.openapi.util.Disposer
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LifetimeTest {
+
+    @Test
+    fun toDisposableDisposerTest() {
+        val life = Lifetime.create(Lifetime.Eternal)
+
+        var disposed = false;
+        life += {
+            disposed = true
+        }
+        val disposable = life.toDisposable()
+        Disposer.dispose(disposable)
+        assertTrue(disposed)
+    }
+
+    @Test
+    fun toDisposableLifetimeTest() {
+        val life = Lifetime.create(Lifetime.Eternal)
+
+        var disposed = false
+        val disposable = life.toDisposable()
+        Disposer.register(disposable, Disposable {
+            disposed = true
+        })
+        life.terminate()
+        assertTrue(disposed)
+    }
 
     @Test
     fun testLifetimes() {

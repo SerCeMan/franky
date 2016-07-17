@@ -26,6 +26,9 @@ class Lifetime internal constructor(eternal: Boolean = false) {
     operator fun plusAssign(action: () -> Unit) = add(action)
 
     fun terminate() {
+        if (isTerminated) {
+            throw RuntimeException("Lifetime terminated several times")
+        }
         isTerminated = true;
         val actionsCopy = actions
         actionsCopy.reversed().forEach {
@@ -56,5 +59,10 @@ fun Lifetime.create(): Lifetime = Lifetime.create(this)
 fun Lifetime.toDisposable(): Disposable {
     val disposable = Disposer.newDisposable()
     this += { Disposer.dispose(disposable) }
+    Disposer.register(disposable, Disposable {
+        if (!isTerminated) {
+            terminate()
+        }
+    })
     return disposable
 }
