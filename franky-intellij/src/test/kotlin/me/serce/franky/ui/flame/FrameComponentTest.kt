@@ -20,37 +20,41 @@ class FrameComponentTest : IdeaTestCase() {
     }
 
     fun testComponent() {
-        SwingUtilities.invokeLater {
-            val result = Protocol.Response.parseFrom(CodedInputStream.newInstance(FileInputStream("/home/serce/tmp/ResultData")))
-            val profInfo = result.profInfo
-            val samples = profInfo.samplesList
-            val methods: Map<Long, Protocol.MethodInfo> = profInfo.methodInfosList.associateBy({ it.jMethodId }, { it })
+        try {
+            SwingUtilities.invokeLater {
+                val result = Protocol.Response.parseFrom(CodedInputStream.newInstance(FileInputStream("/home/serce/tmp/ResultData")))
+                val profInfo = result.profInfo
+                val samples = profInfo.samplesList
+                val methods: Map<Long, Protocol.MethodInfo> = profInfo.methodInfosList.associateBy({ it.jMethodId }, { it })
 
 
-            val tree = FlameTree(samples)
-            val panel = JFrame().apply {
-                defaultCloseOperation = JFrame.EXIT_ON_CLOSE
-                pack()
-                size = Dimension(800, 600)
-                contentPane.apply {
-                    add(JScrollPane(FlameComponent(tree, { methods[it] }).apply {
-                        size = Dimension(800, 600)
-                        methodInfoSubject.subscribe {
-                            println("CLICK $it")
-                        }
-                    }).apply {
-                        verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS
-                        verticalScrollBar.unitIncrement = 16
-                    })
+                val tree = FlameTree(samples)
+                val panel = JFrame().apply {
+                    defaultCloseOperation = JFrame.EXIT_ON_CLOSE
+                    pack()
+                    size = Dimension(800, 600)
+                    contentPane.apply {
+                        add(JScrollPane(FlameComponent(tree, { methods[it] }).apply {
+                            size = Dimension(800, 600)
+                            methodInfoSubject.subscribe {
+                                println("CLICK $it")
+                            }
+                        }).apply {
+                            verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS
+                            verticalScrollBar.unitIncrement = 16
+                        })
+                    }
+                    isVisible = true
+                    repaint()
                 }
-                isVisible = true
-                repaint()
             }
-        }
-        val eventQueue = Toolkit.getDefaultToolkit().systemEventQueue
-        while (true) {
-            val event = eventQueue.nextEvent
-            eventQueue.javaClass.getDeclaredMethod("dispatchEvent", AWTEvent::class.java).invoke(eventQueue, event)
+            val eventQueue = Toolkit.getDefaultToolkit().systemEventQueue
+            while (true) {
+                val event = eventQueue.nextEvent
+                eventQueue.javaClass.getDeclaredMethod("dispatchEvent", AWTEvent::class.java).invoke(eventQueue, event)
+            }
+        } catch (e: Exception) {
+            println(e.message)
         }
     }
 }

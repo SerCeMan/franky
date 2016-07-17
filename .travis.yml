@@ -1,5 +1,7 @@
 sudo: required
 dist: trusty
 language: java
-install: cd franky-agent/ && mkdir -p out && cd out && cmake .. && make
+before_install:
+  - sudo apt-get install -y protobuf-compiler libprotobuf-dev
+install: cd franky-agent/ && mkdir -p out && cd out && cmake .. && make && cd ../../
 script: ./gradlew check

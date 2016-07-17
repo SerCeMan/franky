@@ -1,5 +1,7 @@
 = Franky
 
+image:https://travis-ci.org/SerCeMan/franky.svg?branch=master["Build Status", link="https://travis-ci.org/SerCeMan/franky"]
+
 Franky - a simple profiler that always speaks frankly
 
 == Project Goals
