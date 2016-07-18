@@ -1,14 +1,12 @@
 package me.serce.franky.ui
 
+import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
-import com.intellij.openapi.wm.IdeFocusManager
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.ui.JBTabsPaneImpl
-import com.intellij.ui.TabbedPaneImpl
-import com.intellij.ui.tabs.TabInfo
-import com.intellij.ui.tabs.impl.JBTabsImpl
+import com.intellij.ui.tabs.JBTabs
 import com.intellij.util.ui.components.BorderLayoutPanel
 import me.serce.franky.FrankyComponent
 import me.serce.franky.jvm.AttachableJVM
@@ -16,7 +14,6 @@ import me.serce.franky.util.Lifetime
 import me.serce.franky.util.create
 import me.serce.franky.util.toDisposable
 import rx.Observable
-import java.awt.Component
 import java.awt.Dimension
 import javax.swing.JComponent
 import javax.swing.SwingConstants
@@ -54,22 +51,31 @@ class JvmTabsViewModel(val project: Project, val lifetime: Lifetime, jvmPublishe
 
     init {
         jvmPublisher.subscribe { vm ->
-            val tabController = JvmTabViewModel(lifetime.create(), vm)
-            view.addTab(vm.id, tabController.createComponent())
+            val lifetime = lifetime.create()
+            val tabController = JvmTabViewModel(lifetime, vm)
+            view.addTab(vm.id, tabController.createComponent(), lifetime)
         }
     }
 
     fun createComponent() = view.createComponent()
 
     class JvmTabsView(project: Project, lifetime: Lifetime) : View {
-        val tabs = JBTabsPaneImpl(project, SwingConstants.TOP, lifetime.toDisposable())
+        val tabPane = JBTabsPaneImpl(project, SwingConstants.TOP, lifetime.toDisposable())
+        val tabs: JBTabs = tabPane.tabs
 
-        fun addTab(name: String, comp: JComponent) {
-            tabs.tabs.addTab(TabInfo(comp).apply {
+        fun addTab(name: String, comp: JComponent, lifetime: Lifetime) {
+            tabs.addTab(TabInfo(comp) {
                 text = name
+                val actionGroup = DefaultActionGroup().apply {
+                    add(CloseAction {
+                        tabs.removeTab(this@TabInfo)
+                        lifetime.terminate()
+                    })
+                }
+                setTabLabelActions(actionGroup, "ProfilerTab")
             })
         }
 
-        override fun createComponent() = tabs.component
+        override fun createComponent() = tabPane.component
     }
 }
