@@ -81,5 +81,8 @@ class JVMSession(private val remoteJVM: JVMRemoteInstance,
 
     fun profilingResult() = remoteJVM.response
 
-    override fun close() = vm.detach()
+    override fun close() {
+        vm.detach()
+        remoteJVM.close()
+    }
 }

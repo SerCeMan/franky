@@ -26,12 +26,16 @@ class JVMRemoteService {
     }
 }
 
-class JVMRemoteInstance(val chan: Channel) {
+class JVMRemoteInstance(val chan: Channel) : AutoCloseable {
     val response: PublishSubject<Protocol.Response> = PublishSubject()
 
     fun send(req: Protocol.Request.RequestType) {
         chan.writeAndFlush(Protocol.Request.newBuilder()
                 .setType(req)
                 .build())
+    }
+
+    override fun close() {
+        chan.close()
     }
 }
