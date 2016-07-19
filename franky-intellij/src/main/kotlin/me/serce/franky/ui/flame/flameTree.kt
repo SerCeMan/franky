@@ -13,7 +13,7 @@ fun CallTraceSampleInfo.validate() {
 /**
  * Represents tree of stack traces
  */
-class FlameTree(val sampleInfo: List<CallTraceSampleInfo>) {
+class FlameTree(sampleInfo: List<CallTraceSampleInfo>) {
     val root: FlameNode = FlameNode(0, null)
 
     init {
@@ -25,21 +25,20 @@ class FlameTree(val sampleInfo: List<CallTraceSampleInfo>) {
 
     private fun addSampleToTree(sample: CallTraceSampleInfo) {
         val coef = sample.callCount
+        root.cost += coef
 
         var node = root
         for (frame in sample.frameList.reversed()) {
             val methodId = frame.jMethodId
             node = node.children.computeIfAbsent(methodId, {
-                FlameVertex(coef, FlameNode(frame.jMethodId, node))
-            }).node
+                FlameNode(frame.jMethodId, node)
+            })
+            node.cost += coef
         }
-        node.selfCost += coef
     }
 }
 
-data class FlameVertex(var cost: Int, val node: FlameNode)
-
 class FlameNode(val methodId: Long, val parent: FlameNode?) {
-    var selfCost: Int = 0;
-    val children: HashMap<Long, FlameVertex> = hashMapOf()
+    var cost: Int = 0
+    val children: HashMap<Long, FlameNode> = hashMapOf()
 }

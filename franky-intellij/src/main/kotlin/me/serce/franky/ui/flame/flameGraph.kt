@@ -53,11 +53,11 @@ class FlameComponent(private val tree: FlameTree, val frameFactory: (Long) -> Me
         }
         recalculateComponentCoords(begin, level, node, width, false)
 
-        val totalCost = node.selfCost + node.children.map { it.value.cost }.sum()
+        val totalCost = node.cost
         var nodeBegin = begin
         for ((id, vertex) in node.children) {
             val nodeWidth = width * (vertex.cost / totalCost.toDouble())
-            build(vertex.node, nodeBegin, nodeBegin + nodeWidth, level + 1)
+            build(vertex, nodeBegin, nodeBegin + nodeWidth, level + 1)
             nodeBegin += nodeWidth
         }
     }
@@ -105,7 +105,7 @@ class FlameComponent(private val tree: FlameTree, val frameFactory: (Long) -> Me
 
     private fun makeFrameComponent(node: FlameNode, percentage: Double): FrameComponent {
         val methodInfo = frameFactory(node.methodId) ?: rootMethodInfo()
-        return FrameComponent(methodInfo, percentage).apply {
+        return FrameComponent(methodInfo, percentage, node.cost).apply {
             this@FlameComponent.add(this)
             expandPublisher.subscribe {
                 resetNode(node)
@@ -144,15 +144,16 @@ class FlameComponent(private val tree: FlameTree, val frameFactory: (Long) -> Me
         val level = calcTop(currentRoot)
         build(currentRoot, 0.0, 1.0, level)
     }
-
-    private fun rootMethodInfo() = MethodInfo.newBuilder().setJMethodId(0).setHolder("reset").setName("all").setSig("").setCompiled(false).build()
 }
+
+private fun rootMethodInfo() = MethodInfo.newBuilder().setJMethodId(0).setHolder("reset").setName("all").setSig("").setCompiled(false).build()
+fun MethodInfo.isRoot() = jMethodId == 0L
 
 
 /**
  * Panel representing one cell (frame)
  */
-class FrameComponent(val methodInfo: MethodInfo, val percentage: Double) : BorderLayoutPanel() {
+class FrameComponent(val methodInfo: MethodInfo, percentage: Double, samplesCount: Int) : BorderLayoutPanel() {
     companion object {
         val methodToPsiCache = HashMap<Long, PsiMethod>()
         val percentFormat = NumberFormat.getPercentInstance(Locale.US).apply {
@@ -170,7 +171,10 @@ class FrameComponent(val methodInfo: MethodInfo, val percentage: Double) : Borde
     }
 
 
-    private val methodBtn = JBLabel("${getMethodName()} (${percentFormat.format(percentage)})").apply {
+    private val methodBtn = JBLabel(when {
+        methodInfo.isRoot() -> "reset all"
+        else -> "${getMethodName()} (${percentFormat.format(percentage)}, $samplesCount samples)"
+    }).apply {
         //border = BorderFactory.createLineBorder(Color.RED)
         if (psiMethod != NULL_PSI_METHOD) {
             addMouseListener(MouseClickListener {
@@ -231,7 +235,7 @@ class FrameComponent(val methodInfo: MethodInfo, val percentage: Double) : Borde
         }
     }
 
-    private fun hasWarning() = !methodInfo.hasCompiled()
+    private fun hasWarning() = !methodInfo.compiled && !methodInfo.isRoot()
 
     private fun createWarningLabel(): JLabel {
         var warningIcon = AllIcons.General.BalloonWarning
@@ -240,7 +244,7 @@ class FrameComponent(val methodInfo: MethodInfo, val percentage: Double) : Borde
             warningIcon = ImageIcon(BufferedImage(16, 16, BufferedImage.TYPE_INT_RGB))
         }
         return JBLabel {
-            this.icon = warningIcon
+            icon = warningIcon
             horizontalAlignment = JLabel.CENTER
             toolTipText = "Method hasn't been compiled"
         }

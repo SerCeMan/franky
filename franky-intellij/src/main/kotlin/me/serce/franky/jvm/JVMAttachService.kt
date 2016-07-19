@@ -35,6 +35,7 @@ class JVMAttachService(val jvmRemoteService: JVMRemoteService) {
                 }
                 .map { vm ->
                     thread(isDaemon = true, name = "VM Attach Thread pid=${vm.id()}") {
+                        // TODO proper path
                         vm.loadAgentPath("/home/serce/git/franky/lib/libfrankyagent.so", "$FRANKY_PORT")
                     }
                     vm
