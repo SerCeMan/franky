@@ -18,11 +18,11 @@ class MouseClickListener(val handle: (MouseEvent?) -> Unit) : MouseAdapter() {
     override fun mouseClicked(e: MouseEvent?) = handle(e)
 }
 
-fun JPanel(block: JPanel.() -> Unit): JPanel = JPanel().apply(block)
-fun JButton(block: JButton.() -> Unit): JButton = JButton().apply(block)
-fun JBLabel(block: JBLabel.() -> Unit): JBLabel = JBLabel().apply(block)
-fun JBLabel(title: String, block: JBLabel.() -> Unit): JBLabel = JBLabel(title).apply(block)
-fun TabInfo(comp: JComponent, block: TabInfo.() -> Unit): TabInfo = TabInfo(comp).apply(block)
+inline fun JPanel(block: JPanel.() -> Unit): JPanel = JPanel().apply(block)
+inline fun JButton(block: JButton.() -> Unit): JButton = JButton().apply(block)
+inline fun JBLabel(block: JBLabel.() -> Unit): JBLabel = JBLabel().apply(block)
+inline fun JBLabel(title: String, block: JBLabel.() -> Unit): JBLabel = JBLabel(title).apply(block)
+inline fun TabInfo(comp: JComponent, block: TabInfo.() -> Unit): TabInfo = TabInfo(comp).apply(block)
 
 
 class CloseAction(val onClose: (AnActionEvent) -> Unit) : AnAction(), DumbAware {

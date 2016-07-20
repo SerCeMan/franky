@@ -8,6 +8,7 @@ import me.serce.franky.jvm.AttachableJVM
 import me.serce.franky.jvm.JVMAttachService
 import me.serce.franky.jvm.JVMSession
 import me.serce.franky.util.Lifetime
+import me.serce.franky.util.create
 import me.serce.franky.util.subscribeUI
 import rx.lang.kotlin.AsyncSubject
 import rx.lang.kotlin.PublishSubject
@@ -21,7 +22,7 @@ import javax.swing.ScrollPaneConstants
 
 class JvmTabViewModel(val lifetime: Lifetime, vm: AttachableJVM) : ViewModel {
     private val state = JvmTabState()
-    private val view = JvmTabView(state)
+    private val view = JvmTabView(state, lifetime)
     private val model = JvmTabConntoller(state, lifetime, vm)
 
     override fun createComponent() = view.createComponent()
@@ -33,7 +34,7 @@ private class JvmTabState {
     val profilingResult = PublishSubject<Protocol.Response>()
 }
 
-private class JvmTabView(val state: JvmTabState) : View {
+private class JvmTabView(val state: JvmTabState, val lifetime: Lifetime) : View {
     val tabPanel = BorderLayoutPanel()
 
     val startButton = JButton("Start profiling")
@@ -48,6 +49,10 @@ private class JvmTabView(val state: JvmTabState) : View {
         add(stopButton)
     }
 
+    val profilerPanel = BorderLayoutPanel()
+
+    private var profResultViewModel: ProfResultViewModel? = null
+
     init {
         val throbber = JTextArea("Awaiting connection")
         tabPanel.add(throbber)
@@ -57,6 +62,7 @@ private class JvmTabView(val state: JvmTabState) : View {
                 remove(throbber)
 
                 addToTop(buttonsPanel)
+                addToCenter(profilerPanel)
                 revalidate()
             }
         }
@@ -79,14 +85,22 @@ private class JvmTabView(val state: JvmTabState) : View {
                     result.writeTo(out)
                     out.flush()
                 }
-                val profResultViewModel = ProfResultViewModel(result)
-                addToCenter(JBScrollPane(profResultViewModel.createComponent()).apply {
-                    verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS
-                    verticalScrollBar.unitIncrement = 16
-                    border = BorderFactory.createLineBorder(Color.RED)
-                })
-                revalidate()
-                repaint()
+
+                profResultViewModel?.lifetime?.terminate()
+                val profResView = ProfResultViewModel(result, lifetime.create()).apply {
+                    profResultViewModel = this
+                }
+
+                profilerPanel.apply {
+                    removeAll()
+                    addToCenter(JBScrollPane(profResView.createComponent()).apply {
+                        verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS
+                        verticalScrollBar.unitIncrement = 16
+                        border = BorderFactory.createLineBorder(Color.RED)
+                    })
+                    revalidate()
+                    repaint()
+                }
             }
         }
     }
