@@ -13,8 +13,8 @@ import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBLayeredPane
 import com.intellij.util.ui.components.BorderLayoutPanel
 import me.serce.franky.Protocol.MethodInfo
-import me.serce.franky.ui.JBLabel
-import me.serce.franky.ui.JPanel
+import me.serce.franky.ui.jbLabel
+import me.serce.franky.ui.jPanel
 import me.serce.franky.ui.MouseClickListener
 import me.serce.franky.ui.flame.NullPsiMethod.NULL_PSI_METHOD
 import rx.lang.kotlin.PublishSubject
@@ -169,7 +169,7 @@ class FrameComponent(val methodInfo: MethodInfo, percentage: Double, samplesCoun
             methodInfo.isRoot() -> "reset all"
             else -> "${getMethodName()} (${percentFormat.format(percentage)}, $samplesCount samples)"
         }
-        JBLabel(title) {
+        jbLabel(title) {
             if (psiMethod != NULL_PSI_METHOD) {
                 addMouseListener(MouseClickListener {
                     click()
@@ -211,7 +211,7 @@ class FrameComponent(val methodInfo: MethodInfo, percentage: Double, samplesCoun
     }
 
     init {
-        addToCenter(JPanel {
+        addToCenter(jPanel {
             addMouseListener(object : MouseAdapter() {
                 override fun mouseClicked(e: MouseEvent) = expandPublisher.onNext(e)
 
@@ -263,7 +263,7 @@ class FrameComponent(val methodInfo: MethodInfo, percentage: Double, samplesCoun
             // test mode
             warningIcon = ImageIcon(BufferedImage(16, 16, BufferedImage.TYPE_INT_RGB))
         }
-        return JBLabel {
+        return jbLabel {
             icon = warningIcon
             horizontalAlignment = JLabel.CENTER
             toolTipText = "Method hasn't been compiled"

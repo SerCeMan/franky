@@ -1,5 +1,6 @@
 package me.serce.franky.ui
 
+import com.intellij.util.ui.components.BorderLayoutPanel
 import me.serce.franky.jvm.AttachableJVM
 import me.serce.franky.jvm.JVMAttachService
 import me.serce.franky.util.Lifetime
@@ -8,14 +9,16 @@ import rx.Observable
 import rx.Subscription
 import rx.lang.kotlin.PublishSubject
 import rx.schedulers.Schedulers
+import java.awt.Color
 import java.awt.Component
+import java.awt.Dimension
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import java.util.concurrent.TimeUnit
 import javax.swing.DefaultListCellRenderer
 import javax.swing.DefaultListModel
+import javax.swing.JLabel
 import javax.swing.JList
-import javax.swing.JPanel
 
 
 interface JvmsListViewModel : HasComponent {
@@ -63,10 +66,20 @@ class JvmsListViewModelImpl(val lifetime: Lifetime) : JvmsListViewModel {
                 }
             })
         }
+        val mainPanel = BorderLayoutPanel()
+        var loadingLabel: BorderLayoutPanel? = borderLayoutPanel {
+            background = Color.WHITE
+            addToTop(JLabel("Loading..."))
+        }
 
 
         init {
             state.jvms.subscribeUI { jvms ->
+                if (loadingLabel != null) {
+                    mainPanel.remove(loadingLabel)
+                    mainPanel.addToCenter(jvmsList)
+                    loadingLabel = null
+                }
                 if (jvms != listModel.elements().toList()) {
                     listModel.removeAllElements()
                     jvms?.forEach { listModel.addElement(it) }
@@ -78,15 +91,22 @@ class JvmsListViewModelImpl(val lifetime: Lifetime) : JvmsListViewModel {
                     return super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus).apply {
                         value as AttachableJVM?
                         if (value != null) {
-                            text = "${value.id} ${value.name.substring(0, Math.min(value.name.length, 20))}"
+                            text = "[${value.id}] ${value.name}"
+                            toolTipText = text
                         }
                     }
                 }
             }
         }
 
-        override fun createComponent() = JPanel().apply {
-            add(jvmsList)
+        override fun createComponent() = mainPanel.apply {
+            preferredSize = Dimension(200, 0)
+            background = Color.WHITE
+            addToTop(jbLabel {
+                text = "Running JVMs"
+                background = Color.WHITE
+            })
+            addToCenter(loadingLabel)
         }
     }
 }

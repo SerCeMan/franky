@@ -38,12 +38,12 @@ private class JvmTabView(val state: JvmTabState, val lifetime: Lifetime) : View 
     val tabPanel = BorderLayoutPanel()
 
     val startButton = JButton("Start profiling")
-    val stopButton = JButton {
+    val stopButton = jButton {
         text = "Stop profiling"
         isEnabled = false
     }
 
-    val buttonsPanel = JPanel {
+    val buttonsPanel = jPanel {
         layout = FlowLayout()
         add(startButton)
         add(stopButton)

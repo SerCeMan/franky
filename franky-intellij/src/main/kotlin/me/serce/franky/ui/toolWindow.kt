@@ -38,9 +38,7 @@ class FrankyPanelController(val project: Project, val lifetime: Lifetime) : View
         val profilingTabsController = JvmTabsViewModel(project, lifetime.create(), jvmsListController.connectJvmPublisher)
 
         return BorderLayoutPanel().apply {
-            addToLeft(jvmsListController.createComponent()).apply {
-                preferredSize = Dimension(150, 0)
-            }
+            addToLeft(jvmsListController.createComponent())
             addToCenter(profilingTabsController.createComponent())
         }
     }
@@ -64,11 +62,11 @@ class JvmTabsViewModel(val project: Project, val lifetime: Lifetime, jvmPublishe
         val tabs: JBTabs = tabPane.tabs
 
         fun addTab(name: String, comp: JComponent, lifetime: Lifetime) {
-            tabs.addTab(TabInfo(comp) {
+            tabs.addTab(tabInfo(comp) {
                 text = name
                 val actionGroup = DefaultActionGroup().apply {
                     add(CloseAction {
-                        tabs.removeTab(this@TabInfo)
+                        tabs.removeTab(this@tabInfo)
                         lifetime.terminate()
                     })
                 }

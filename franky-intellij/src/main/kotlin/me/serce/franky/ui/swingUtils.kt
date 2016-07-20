@@ -8,6 +8,7 @@ import com.intellij.openapi.project.DumbAware
 import com.intellij.ui.JBTabsPaneImpl
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.tabs.TabInfo
+import com.intellij.util.ui.components.BorderLayoutPanel
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import javax.swing.JButton
@@ -18,11 +19,12 @@ class MouseClickListener(val handle: (MouseEvent?) -> Unit) : MouseAdapter() {
     override fun mouseClicked(e: MouseEvent?) = handle(e)
 }
 
-inline fun JPanel(block: JPanel.() -> Unit): JPanel = JPanel().apply(block)
-inline fun JButton(block: JButton.() -> Unit): JButton = JButton().apply(block)
-inline fun JBLabel(block: JBLabel.() -> Unit): JBLabel = JBLabel().apply(block)
-inline fun JBLabel(title: String, block: JBLabel.() -> Unit): JBLabel = JBLabel(title).apply(block)
-inline fun TabInfo(comp: JComponent, block: TabInfo.() -> Unit): TabInfo = TabInfo(comp).apply(block)
+inline fun jPanel(block: JPanel.() -> Unit): JPanel = JPanel().apply(block)
+inline fun jButton(block: JButton.() -> Unit): JButton = JButton().apply(block)
+inline fun borderLayoutPanel(block: BorderLayoutPanel.() -> Unit): BorderLayoutPanel = BorderLayoutPanel().apply(block)
+inline fun jbLabel(block: JBLabel.() -> Unit): JBLabel = JBLabel().apply(block)
+inline fun jbLabel(title: String, block: JBLabel.() -> Unit): JBLabel = JBLabel(title).apply(block)
+inline fun tabInfo(comp: JComponent, block: TabInfo.() -> Unit): TabInfo = TabInfo(comp).apply(block)
 
 
 class CloseAction(val onClose: (AnActionEvent) -> Unit) : AnAction(), DumbAware {
