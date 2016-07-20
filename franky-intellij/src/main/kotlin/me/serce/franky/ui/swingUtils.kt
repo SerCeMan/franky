@@ -21,6 +21,7 @@ class MouseClickListener(val handle: (MouseEvent?) -> Unit) : MouseAdapter() {
 fun JPanel(block: JPanel.() -> Unit): JPanel = JPanel().apply(block)
 fun JButton(block: JButton.() -> Unit): JButton = JButton().apply(block)
 fun JBLabel(block: JBLabel.() -> Unit): JBLabel = JBLabel().apply(block)
+fun JBLabel(title: String, block: JBLabel.() -> Unit): JBLabel = JBLabel(title).apply(block)
 fun TabInfo(comp: JComponent, block: TabInfo.() -> Unit): TabInfo = TabInfo(comp).apply(block)
 
 

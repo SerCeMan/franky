@@ -85,6 +85,8 @@ private class JvmTabView(val state: JvmTabState) : View {
                     verticalScrollBar.unitIncrement = 16
                     border = BorderFactory.createLineBorder(Color.RED)
                 })
+                revalidate()
+                repaint()
             }
         }
     }

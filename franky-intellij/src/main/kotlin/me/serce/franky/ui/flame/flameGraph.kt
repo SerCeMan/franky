@@ -10,9 +10,11 @@ import com.intellij.psi.util.ClassUtil
 import com.intellij.psi.util.PsiFormatUtil
 import com.intellij.psi.util.PsiFormatUtilBase
 import com.intellij.ui.components.JBLabel
+import com.intellij.ui.components.JBLayeredPane
 import com.intellij.util.ui.components.BorderLayoutPanel
 import me.serce.franky.Protocol.MethodInfo
 import me.serce.franky.ui.JBLabel
+import me.serce.franky.ui.JPanel
 import me.serce.franky.ui.MouseClickListener
 import me.serce.franky.ui.flame.NullPsiMethod.NULL_PSI_METHOD
 import rx.lang.kotlin.PublishSubject
@@ -62,21 +64,14 @@ class FlameComponent(private val tree: FlameTree, val frameFactory: (Long) -> Me
         }
     }
 
-    private fun recalculateComponentCoords(begin: Double, level: Int, node: FlameNode, width: Double, collapsed: Boolean) {
+    private fun recalculateComponentCoords(begin: Double, level: Int, node: FlameNode, width: Double, isCollapsed: Boolean) {
         val component = nodeToComp.getOrPut(node, { makeFrameComponent(node, width) })
         val coord = ComponentCoord(begin, width, level, getWidth())
         component.apply {
+            collapsed = isCollapsed
             size = Dimension(coord.getWidth(), coord.getHeight())
             location = Point(coord.getX(), coord.getY())
-//            background = when {
-//                collapsed -> Color.BLACK
-//                else -> null
-//            }
-//            isOpaque = true
-            border = BorderFactory.createLineBorder(when {
-                collapsed -> Color.RED
-                else -> Color.BLACK
-            })
+            setComponents()
         }
         if (coord.getY() >= maxHeight) {
             maxHeight = coord.getY()
@@ -162,26 +157,26 @@ class FrameComponent(val methodInfo: MethodInfo, percentage: Double, samplesCoun
     }
 
     val expandPublisher = PublishSubject<AWTEvent>()
-    val psiMethod: PsiMethod
+    var collapsed: Boolean = false
 
-    init {
-        psiMethod = methodToPsiCache.getOrPut(methodInfo.jMethodId, {
-            findPsiMethod() ?: NULL_PSI_METHOD
-        })
-    }
+    private val psiMethod: PsiMethod = methodToPsiCache.getOrPut(methodInfo.jMethodId, {
+        findPsiMethod() ?: NULL_PSI_METHOD
+    })
 
 
-    private val methodBtn = JBLabel(when {
-        methodInfo.isRoot() -> "reset all"
-        else -> "${getMethodName()} (${percentFormat.format(percentage)}, $samplesCount samples)"
-    }).apply {
-        //border = BorderFactory.createLineBorder(Color.RED)
-        if (psiMethod != NULL_PSI_METHOD) {
-            addMouseListener(MouseClickListener {
-                click()
-            })
-            foreground = Color(18, 69, 120)
-            cursor = Cursor(Cursor.HAND_CURSOR)
+    private val methodBtn = run {
+        val title = when {
+            methodInfo.isRoot() -> "reset all"
+            else -> "${getMethodName()} (${percentFormat.format(percentage)}, $samplesCount samples)"
+        }
+        JBLabel(title) {
+            if (psiMethod != NULL_PSI_METHOD) {
+                addMouseListener(MouseClickListener {
+                    click()
+                })
+                foreground = Color(18, 69, 120)
+                cursor = Cursor(Cursor.HAND_CURSOR)
+            }
         }
     }
 
@@ -216,16 +211,18 @@ class FrameComponent(val methodInfo: MethodInfo, percentage: Double, samplesCoun
     }
 
     init {
-        addToCenter(JPanel().apply {
+        addToCenter(JPanel {
             addMouseListener(object : MouseAdapter() {
                 override fun mouseClicked(e: MouseEvent) = expandPublisher.onNext(e)
 
                 override fun mouseEntered(e: MouseEvent) {
                     border = BorderFactory.createLineBorder(Color.DARK_GRAY, 1)
+                    repaintFrame()
                 }
 
                 override fun mouseExited(e: MouseEvent) {
                     border = null
+                    repaintFrame()
                 }
             })
             add(methodBtn)
@@ -233,9 +230,32 @@ class FrameComponent(val methodInfo: MethodInfo, percentage: Double, samplesCoun
         if (hasWarning()/* || true*/) {
             addToRight(createWarningLabel())
         }
+        border = BorderFactory.createLineBorder(Color.BLACK)
+    }
+
+    fun setComponents() {
+        // todo remove?
+        border = BorderFactory.createLineBorder(when {
+            collapsed -> Color.RED
+            else -> Color.BLACK
+        })
+    }
+
+    override fun paintComponent(g: Graphics) {
+        super.paintComponent(g)
+        if (collapsed) {
+            g as Graphics2D
+            g.setRenderingHint(
+                    RenderingHints.KEY_ANTIALIASING,
+                    RenderingHints.VALUE_ANTIALIAS_ON)
+            g.composite = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.75f)
+            g.color = Color.gray
+            g.fillRect(0, 0, width, height)
+        }
     }
 
     private fun hasWarning() = !methodInfo.compiled && !methodInfo.isRoot()
+    private fun repaintFrame() = repaint()
 
     private fun createWarningLabel(): JLabel {
         var warningIcon = AllIcons.General.BalloonWarning
