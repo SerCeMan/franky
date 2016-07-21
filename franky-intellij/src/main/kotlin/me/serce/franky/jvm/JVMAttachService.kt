@@ -1,16 +1,17 @@
 package me.serce.franky.jvm
 
-import com.google.protobuf.CodedInputStream
 import com.intellij.openapi.components.ServiceManager
 import com.sun.tools.attach.VirtualMachine
 import com.sun.tools.attach.VirtualMachineDescriptor
 import me.serce.franky.FRANKY_PORT
-import me.serce.franky.Protocol
+import me.serce.franky.FrankyComponent
 import me.serce.franky.Protocol.Request.RequestType.START_PROFILING
 import me.serce.franky.Protocol.Request.RequestType.STOP_PROFILING
 import rx.Observable
 import rx.schedulers.Schedulers
-import java.io.FileInputStream
+import java.io.File
+import java.nio.file.Files
+import java.nio.file.Paths
 import kotlin.concurrent.thread
 
 data class AttachableJVM(val id: String, val name: String) : Comparable<AttachableJVM> {
@@ -35,8 +36,13 @@ class JVMAttachService(val jvmRemoteService: JVMRemoteService) {
                 }
                 .map { vm ->
                     thread(isDaemon = true, name = "VM Attach Thread pid=${vm.id()}") {
-                        // TODO proper path
-                        vm.loadAgentPath("/home/serce/git/franky/lib/libfrankyagent.so", "$FRANKY_PORT")
+                        val frankyPath = Paths.get("/tmp/libfrankyagent.so")
+                        if (!Files.exists(frankyPath)) {
+                            val frankyResouce = FrankyComponent::class.java.classLoader.getResource("libfrankyagent.so").openStream()
+                            Files.copy(frankyResouce, frankyPath)
+                        }
+                        frankyPath.toFile().deleteOnExit()
+                        vm.loadAgentPath(frankyPath.toAbsolutePath().toString(), "$FRANKY_PORT")
                     }
                     vm
                 }
@@ -70,14 +76,14 @@ class JVMSession(private val remoteJVM: JVMRemoteInstance,
     }
 
     // todo DEV-MODE
-//    fun startProfiling() {
-//        isRunning = true
-//    }
-//
-//    fun stopProfiling() {
-//        isRunning = false
-//        profilingResult().onNext(Protocol.Response.parseFrom(CodedInputStream.newInstance(FileInputStream("/home/serce/tmp/ResultData"))))
-//    }
+    //    fun startProfiling() {
+    //        isRunning = true
+    //    }
+    //
+    //    fun stopProfiling() {
+    //        isRunning = false
+    //        profilingResult().onNext(Protocol.Response.parseFrom(CodedInputStream.newInstance(FileInputStream("/home/serce/tmp/ResultData"))))
+    //    }
 
 
     fun profilingResult() = remoteJVM.response

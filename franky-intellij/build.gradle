@@ -36,6 +36,15 @@ repositories {
     jcenter()
 }
 
+sourceSets {
+    main {
+        resources {
+            srcDir '../lib'
+        }
+    }
+}
+
+
 dependencies {
     compile project(':franky-proto')
 
