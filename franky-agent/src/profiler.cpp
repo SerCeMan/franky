@@ -302,7 +302,10 @@ void Profiler::init(int port) {
     sendResponse(sockfd, response);
     while (true) {
         Request request;
-        readRequest(&request);
+        int res = readRequest(&request);
+        if (res == -2) {
+            return;
+        }
 
         switch (request.type()) {
             case Request_RequestType_START_PROFILING:
@@ -321,7 +324,7 @@ void Profiler::init(int port) {
     }
 }
 
-void Profiler::readRequest(Request *message) {
+int Profiler::readRequest(Request *message) {
     using namespace google::protobuf;
     using namespace google::protobuf::io;
 
@@ -331,7 +334,7 @@ void Profiler::readRequest(Request *message) {
     // Read the size.
     uint32_t size;
     if (!input.ReadVarint32(&size)) {
-        error("Error reading variint32");
+        return -2;
     }
 
     // Tell the stream not to read beyond that size.
@@ -340,10 +343,13 @@ void Profiler::readRequest(Request *message) {
     // Parse the message.
     if (!message->MergeFromCodedStream(&input)) {
         error("Error paring message 1");
+        return -1;
     }
     if (!input.ConsumedEntireMessage()) {
         error("Error paring message 2");
+        return -1;
     }
+    return 0;
 }
 
 int64_t jMethodIdToId(const jmethodID &jmethod) {

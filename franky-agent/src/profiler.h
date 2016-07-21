@@ -114,7 +114,7 @@ private:
 
     void setTimer(long sec, long usec);
 
-    void readRequest(me::serce::franky::Request *message);
+    int readRequest(me::serce::franky::Request *message);
 
     void writeResult();
 
