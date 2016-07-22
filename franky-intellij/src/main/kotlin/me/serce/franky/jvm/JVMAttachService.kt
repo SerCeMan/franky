@@ -7,11 +7,12 @@ import me.serce.franky.FRANKY_PORT
 import me.serce.franky.FrankyComponent
 import me.serce.franky.Protocol.Request.RequestType.START_PROFILING
 import me.serce.franky.Protocol.Request.RequestType.STOP_PROFILING
+import me.serce.franky.util.Loggable
+import me.serce.franky.util.logger
 import rx.Observable
 import rx.schedulers.Schedulers
-import java.io.File
 import java.nio.file.Files
-import java.nio.file.Paths
+import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import kotlin.concurrent.thread
 
 data class AttachableJVM(val id: String, val name: String) : Comparable<AttachableJVM> {
@@ -19,7 +20,8 @@ data class AttachableJVM(val id: String, val name: String) : Comparable<Attachab
 }
 
 class JVMAttachService(val jvmRemoteService: JVMRemoteService) {
-    companion object {
+    companion object : Loggable {
+        val LOG = logger()
         fun getInstance() = ServiceManager.getService(JVMAttachService::class.java)
     }
 
@@ -30,19 +32,26 @@ class JVMAttachService(val jvmRemoteService: JVMRemoteService) {
 
     fun connect(jvm: AttachableJVM): Observable<JVMSession> {
         val channelObs = jvmRemoteService.init(jvm.id.toInt())
+
         return Observable
                 .fromCallable {
                     VirtualMachine.attach(jvm.id)
                 }
                 .map { vm ->
-                    thread(isDaemon = true, name = "VM Attach Thread pid=${vm.id()}") {
-                        val frankyPath = Paths.get("/tmp/libfrankyagent.so")
-                        if (!Files.exists(frankyPath)) {
-                            val frankyResouce = FrankyComponent::class.java.classLoader.getResource("libfrankyagent.so").openStream()
-                            Files.copy(frankyResouce, frankyPath)
+                    val pid = vm.id()
+                    thread(isDaemon = true, name = "VM Attach Thread pid=$pid") {
+                        LOG.info("Attaching Franky JVM agent to pid=$pid")
+                        try {
+                            val frankyPath = Files.createTempFile("libfrankyagent_tmp", ".so").apply {
+                                toFile().deleteOnExit()
+                            }
+                            val frankyResource = FrankyComponent::class.java.classLoader.getResource("libfrankyagent.so").openStream()
+                            Files.copy(frankyResource, frankyPath, REPLACE_EXISTING)
+                            vm.loadAgentPath(frankyPath.toAbsolutePath().toString(), "$FRANKY_PORT")
+                        } catch (t: Throwable) {
+                            LOG.error("JVM connection had crashed", t)
                         }
-                        frankyPath.toFile().deleteOnExit()
-                        vm.loadAgentPath(frankyPath.toAbsolutePath().toString(), "$FRANKY_PORT")
+                        LOG.info("Franky JVM agent detached from pid=$pid")
                     }
                     vm
                 }

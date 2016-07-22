@@ -19,7 +19,7 @@ import me.serce.franky.jvm.JVMRemoteService
 import me.serce.franky.util.Lifetime
 import org.jetbrains.io.addChannelListener
 
-const val FRANKY_PORT: Int = 4897;
+const val FRANKY_PORT: Int = 4897
 
 class FrankyComponent(val jvmRemoteService: JVMRemoteService) : ApplicationComponent {
     val rootLifetime = Lifetime()
