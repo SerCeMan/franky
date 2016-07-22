@@ -1,4 +1,5 @@
 rootProject.name = 'franky'
 include 'franky-proto'
+include 'franky-agent'
 include 'franky-intellij'
 
