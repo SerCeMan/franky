@@ -46,6 +46,8 @@ fun addToLibPath(path: String) {
 
 
 /**
+ * TODO: currently linux only
+ *
  * Check that libattach.so is in libpath.
  * If it is not, try to add it from other jdk's in the system
  */

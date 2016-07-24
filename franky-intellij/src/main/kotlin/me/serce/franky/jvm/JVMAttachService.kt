@@ -1,8 +1,6 @@
 package me.serce.franky.jvm
 
 import com.intellij.openapi.components.ServiceManager
-import com.intellij.openapi.projectRoots.JavaSdk
-import com.intellij.openapi.projectRoots.ProjectJdkTable
 import com.sun.tools.attach.VirtualMachine
 import com.sun.tools.attach.VirtualMachineDescriptor
 import me.serce.franky.FRANKY_PORT
@@ -10,12 +8,10 @@ import me.serce.franky.FrankyComponent
 import me.serce.franky.Protocol.Request.RequestType.START_PROFILING
 import me.serce.franky.Protocol.Request.RequestType.STOP_PROFILING
 import me.serce.franky.util.Loggable
-import me.serce.franky.util.addToLibPath
 import me.serce.franky.util.ensureLibattach
 import me.serce.franky.util.logger
 import rx.Observable
 import rx.schedulers.Schedulers
-import java.io.File
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import kotlin.concurrent.thread
@@ -30,10 +26,9 @@ class JVMAttachService(val jvmRemoteService: JVMRemoteService) {
         fun getInstance() = ServiceManager.getService(JVMAttachService::class.java)
     }
 
-    fun attachableJVMs(): List<AttachableJVM> = VirtualMachine.list()
-            .map { jvm: VirtualMachineDescriptor ->
-                AttachableJVM(jvm.id(), jvm.displayName())
-            }
+    fun attachableJVMs(): List<AttachableJVM> = VirtualMachine.list().map { jvm: VirtualMachineDescriptor ->
+        AttachableJVM(jvm.id(), jvm.displayName())
+    }
 
     fun connect(jvm: AttachableJVM): Observable<JVMSession> {
         val channelObs = jvmRemoteService.init(jvm.id.toInt())

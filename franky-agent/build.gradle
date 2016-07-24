@@ -4,9 +4,6 @@ buildscript {
     }
 }
 
-group 'me.serce'
-version '1.0-SNAPSHOT'
-
 task launchCMake(type: Exec) {
     // workaround for workingDir bug in Gradle
     commandLine = ['bash', '-c', "mkdir -p ${project(':franky-agent').buildDir} && cd ${project(':franky-agent').buildDir} && cmake .. && cd -"]
