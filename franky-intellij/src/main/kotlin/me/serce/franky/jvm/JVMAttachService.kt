@@ -21,6 +21,8 @@ data class AttachableJVM(val id: String, val name: String) : Comparable<Attachab
 }
 
 class JVMAttachService(val jvmRemoteService: JVMRemoteService) {
+
+
     companion object : Loggable {
         val LOG = logger()
         fun getInstance() = ServiceManager.getService(JVMAttachService::class.java)
@@ -38,7 +40,10 @@ class JVMAttachService(val jvmRemoteService: JVMRemoteService) {
                     try {
                         ensureLibattach()
                         VirtualMachine.attach(jvm.id)
-                    } catch (e: Exception) {
+                    } catch (e: Throwable) {
+                        if (e is UnsatisfiedLinkError) {
+                            throw RuntimeException("Unable connect VM. Please add libattach.so library to libpath", e)
+                        }
                         throw RuntimeException("Unable to connect to ${jvm.id}", e)
                     }
                 }

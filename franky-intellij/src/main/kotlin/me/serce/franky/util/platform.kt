@@ -2,6 +2,7 @@ package me.serce.franky.util
 
 import com.intellij.openapi.projectRoots.ProjectJdkTable
 import me.serce.franky.jvm.JVMAttachService
+import sun.tools.attach.LinuxVirtualMachine
 import java.io.File
 import java.io.File.pathSeparator
 import java.lang.management.ManagementFactory
@@ -52,23 +53,23 @@ fun addToLibPath(path: String) {
  * If it is not, try to add it from other jdk's in the system
  */
 fun ensureLibattach() {
-    try {
-        System.loadLibrary("attach")
-    } catch (e: UnsatisfiedLinkError) {
-        for (jdk in ProjectJdkTable.getInstance().allJdks) {
-            val libPath = "${jdk.homePath}/jre/lib"
-            val jdkPath = "$libPath/amd64/libattach.so"
-            if (File(jdkPath).exists()) {
-                addToLibPath(libPath)
-                JVMAttachService.LOG.info("$jdkPath was added to lib path")
-                try {
-                    System.loadLibrary("attach")
-                    break
-                } catch (e: UnsatisfiedLinkError) {
-                    JVMAttachService.LOG.error("Error connecting to vm", e)
-                }
-            }
+    /*
+       Sadly, we have to do it or else LinuxVirtualMachine will be erroneous.
+       If we try to load System.loadLibrary("attach") then we won't be able to load it by another classloader.
+       TODO Maybe try to load it via reflection later (loadLibrary0)
+     */
+    for (jdk in ProjectJdkTable.getInstance().allJdks) {
+        val libPath = "${jdk.homePath}/jre/lib/amd64/"
+        val jdkPath = "$libPath/libattach.so"
+        if (File(jdkPath).exists()) {
+            addToLibPath(libPath)
+            JVMAttachService.LOG.info("$jdkPath was added to lib path")
+            //            try {
+            //                Class.forName("sun.tools.attach.LinuxVirtualMachine")
+            //                return
+            //            } catch (ule: Error) {
+            //                JVMAttachService.LOG.error("Error connecting to vm", ule)
+            //            }
         }
-        throw RuntimeException("Unable connect VM. Please add libattach.so library to libpath", e)
     }
 }
