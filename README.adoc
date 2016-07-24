@@ -6,13 +6,34 @@ Franky - a simple profiler that always speaks frankly
 
 == Project Goals
 
-== Rationale
+Goal of this project is creating profiler which
 
-* AsyncGetCallTrace
-* IntelliJ IDEA plugin
+ * Is truthful, because it is built on the top of private JVM API (AsyncGetCallTrace)
+ * Can attach to any JVM on the fly
+ * Have a rich integration with IDE with navigation and inspections showing you how to improve your code based on profiling results (actually, Franky is a plugin for IntelliJ IDEA)
+
+== Rationale
 
 == Get it
 
+Franky can be installed as a plugin for IntelliJ IDEA. While Franky is still in alpha you can install it from my own plugin repository using https://www.jetbrains.com/help/idea/2016.1/custom-plugin-repositories-dialog.html[Custom Plugin Repositories Dialog] 
+
+Repository URL:
+[source,bash]
+----
+https://raw.githubusercontent.com/SerCeMan/franky-releases/master/updatePlugins.xml
+----
+
 == Build it
 
-== Thanks
+[source,bash]
+----
+./gradlew plugin
+----
+
+== Thanks to
+
+* https://github.com/apangin[@apangin] for his https://github.com/apangin/async-profiler[async-profiler]
+* https://github.com/RichardWarburton[@RichardWarburton] for his https://github.com/RichardWarburton/honest-profiler[honest-profiler]
+* https://github.com/RichardWarburton[@RichardWarburton] for his https://github.com/RichardWarburton/honest-profiler[honest-profiler]
+* https://github.com/nitsanw[@nitsanw] for his awesome talks and article about http://psy-lob-saw.blogspot.ru/2016/06/the-pros-and-cons-of-agct.html[AsyncGetCallTrace profiling] 
