@@ -1,6 +1,8 @@
 package me.serce.franky.jvm
 
 import com.intellij.openapi.components.ServiceManager
+import com.intellij.openapi.projectRoots.JavaSdk
+import com.intellij.openapi.projectRoots.ProjectJdkTable
 import com.sun.tools.attach.VirtualMachine
 import com.sun.tools.attach.VirtualMachineDescriptor
 import me.serce.franky.FRANKY_PORT
@@ -8,9 +10,12 @@ import me.serce.franky.FrankyComponent
 import me.serce.franky.Protocol.Request.RequestType.START_PROFILING
 import me.serce.franky.Protocol.Request.RequestType.STOP_PROFILING
 import me.serce.franky.util.Loggable
+import me.serce.franky.util.addToLibPath
+import me.serce.franky.util.ensureLibattach
 import me.serce.franky.util.logger
 import rx.Observable
 import rx.schedulers.Schedulers
+import java.io.File
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import kotlin.concurrent.thread
@@ -35,7 +40,12 @@ class JVMAttachService(val jvmRemoteService: JVMRemoteService) {
 
         return Observable
                 .fromCallable {
-                    VirtualMachine.attach(jvm.id)
+                    try {
+                        ensureLibattach()
+                        VirtualMachine.attach(jvm.id)
+                    } catch (e: Exception) {
+                        throw RuntimeException("Unable to connect to ${jvm.id}", e)
+                    }
                 }
                 .map { vm ->
                     val pid = vm.id()
@@ -71,7 +81,7 @@ fun main(args: Array<String>) {
 
 class JVMSession(private val remoteJVM: JVMRemoteInstance,
                  private val vm: VirtualMachine) : AutoCloseable {
-    private var isRunning = false;
+    private var isRunning = false
 
 
     fun startProfiling() {
