@@ -80,11 +80,11 @@ private class JvmTabView(val state: JvmTabState, val lifetime: Lifetime) : View 
         state.profilingResult.subscribeUI { result: Protocol.Response ->
             tabPanel.apply {
                 // TODO DEV-MODE
-                FileOutputStream("/home/serce/tmp/ResultData").use { fos ->
-                    val out = CodedOutputStream.newInstance(fos)
-                    result.writeTo(out)
-                    out.flush()
-                }
+                //                FileOutputStream("/home/serce/tmp/ResultData").use { fos ->
+                //                    val out = CodedOutputStream.newInstance(fos)
+                //                    result.writeTo(out)
+                //                    out.flush()
+                //                }
 
                 profResultViewModel?.lifetime?.terminate()
                 val profResView = ProfResultViewModel(result, lifetime.create()).apply {
