@@ -1,6 +1,5 @@
 package me.serce.franky.ui
 
-import com.google.protobuf.CodedOutputStream
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.util.ui.components.BorderLayoutPanel
 import me.serce.franky.Protocol
@@ -14,13 +13,12 @@ import rx.lang.kotlin.AsyncSubject
 import rx.lang.kotlin.PublishSubject
 import java.awt.Color
 import java.awt.FlowLayout
-import java.io.FileOutputStream
 import javax.swing.BorderFactory
 import javax.swing.JButton
 import javax.swing.JTextArea
 import javax.swing.ScrollPaneConstants
 
-class JvmTabViewModel(val lifetime: Lifetime, vm: AttachableJVM) : ViewModel {
+class JvmTabViewModel(lifetime: Lifetime, vm: AttachableJVM) : ViewModel {
     private val state = JvmTabState()
     private val view = JvmTabView(state, lifetime)
     private val model = JvmTabConntoller(state, lifetime, vm)

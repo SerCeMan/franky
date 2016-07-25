@@ -9,14 +9,14 @@ import com.intellij.psi.PsiMethod
 import com.intellij.psi.util.ClassUtil
 import com.intellij.psi.util.PsiFormatUtil
 import com.intellij.psi.util.PsiFormatUtilBase
+import com.intellij.ui.HyperlinkLabel
+import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBLabel
-import com.intellij.ui.components.JBLayeredPane
 import com.intellij.util.ui.components.BorderLayoutPanel
 import me.serce.franky.Protocol.MethodInfo
-import me.serce.franky.ui.jbLabel
-import me.serce.franky.ui.jPanel
-import me.serce.franky.ui.MouseClickListener
 import me.serce.franky.ui.flame.NullPsiMethod.NULL_PSI_METHOD
+import me.serce.franky.ui.jPanel
+import me.serce.franky.ui.jbLabel
 import rx.lang.kotlin.PublishSubject
 import java.awt.*
 import java.awt.event.MouseAdapter
@@ -24,7 +24,10 @@ import java.awt.event.MouseEvent
 import java.awt.image.BufferedImage
 import java.text.NumberFormat
 import java.util.*
-import javax.swing.*
+import javax.swing.BorderFactory
+import javax.swing.ImageIcon
+import javax.swing.JComponent
+import javax.swing.JLabel
 
 class FlameComponent(private val tree: FlameTree, val frameFactory: (Long) -> MethodInfo?) : JComponent() {
     private data class ComponentCoord(val x: Double, val width: Double, val level: Int, val parentWidth: Int) {
@@ -164,19 +167,19 @@ class FrameComponent(val methodInfo: MethodInfo, percentage: Double, samplesCoun
     })
 
 
-    private val methodBtn = run {
+    private val methodLabel: JComponent = run {
         val title = when {
             methodInfo.isRoot() -> "reset all"
             else -> "${getMethodName()} (${percentFormat.format(percentage)}, $samplesCount samples)"
         }
-        jbLabel(title) {
-            if (psiMethod != NULL_PSI_METHOD) {
-                addMouseListener(MouseClickListener {
+        if (psiMethod != NULL_PSI_METHOD) {
+            HyperlinkLabel(title).apply {
+                addHyperlinkListener {
                     click()
-                })
-                foreground = Color(18, 69, 120)
-                cursor = Cursor(Cursor.HAND_CURSOR)
+                }
             }
+        } else {
+            JBLabel(title)
         }
     }
 
@@ -216,7 +219,7 @@ class FrameComponent(val methodInfo: MethodInfo, percentage: Double, samplesCoun
                 override fun mouseClicked(e: MouseEvent) = expandPublisher.onNext(e)
 
                 override fun mouseEntered(e: MouseEvent) {
-                    border = BorderFactory.createLineBorder(Color.DARK_GRAY, 1)
+                    border = BorderFactory.createLineBorder(JBColor.DARK_GRAY, 1)
                     repaintFrame()
                 }
 
@@ -225,19 +228,18 @@ class FrameComponent(val methodInfo: MethodInfo, percentage: Double, samplesCoun
                     repaintFrame()
                 }
             })
-            add(methodBtn)
+            add(methodLabel)
         })
         if (hasWarning()/* || true*/) {
             addToRight(createWarningLabel())
         }
-        border = BorderFactory.createLineBorder(Color.BLACK)
     }
 
     fun setComponents() {
         // todo remove?
         border = BorderFactory.createLineBorder(when {
-            collapsed -> Color.RED
-            else -> Color.BLACK
+            collapsed -> JBColor.RED
+            else -> JBColor.DARK_GRAY
         })
     }
 

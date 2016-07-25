@@ -1,5 +1,7 @@
 package me.serce.franky.ui
 
+import com.intellij.openapi.editor.colors.EditorColorsManager
+import com.intellij.util.ui.UIUtil
 import com.intellij.util.ui.components.BorderLayoutPanel
 import me.serce.franky.jvm.AttachableJVM
 import me.serce.franky.jvm.JVMAttachService
@@ -9,7 +11,6 @@ import rx.Observable
 import rx.Subscription
 import rx.lang.kotlin.PublishSubject
 import rx.schedulers.Schedulers
-import java.awt.Color
 import java.awt.Component
 import java.awt.Dimension
 import java.awt.event.MouseAdapter
@@ -58,6 +59,7 @@ class JvmsListViewModelImpl(val lifetime: Lifetime) : JvmsListViewModel {
         val listModel = DefaultListModel<AttachableJVM>()
         val jvmsList = JList<AttachableJVM>().apply {
             model = listModel
+            background = UIUtil.getListBackground()
             addMouseListener(object : MouseAdapter() {
                 override fun mouseClicked(e: MouseEvent) {
                     if (e.clickCount == 2) {
@@ -68,7 +70,6 @@ class JvmsListViewModelImpl(val lifetime: Lifetime) : JvmsListViewModel {
         }
         val mainPanel = BorderLayoutPanel()
         var loadingLabel: BorderLayoutPanel? = borderLayoutPanel {
-            background = Color.WHITE
             addToTop(JLabel("Loading..."))
         }
 
@@ -101,10 +102,8 @@ class JvmsListViewModelImpl(val lifetime: Lifetime) : JvmsListViewModel {
 
         override fun createComponent() = mainPanel.apply {
             preferredSize = Dimension(200, 0)
-            background = Color.WHITE
             addToTop(jbLabel {
                 text = "Running JVMs"
-                background = Color.WHITE
             })
             addToCenter(loadingLabel)
         }

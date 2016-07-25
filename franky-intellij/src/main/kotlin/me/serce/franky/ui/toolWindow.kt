@@ -2,6 +2,7 @@ package me.serce.franky.ui
 
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.ui.Splitter
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
@@ -37,9 +38,10 @@ class FrankyPanelController(val project: Project, val lifetime: Lifetime) : View
         val jvmsListController: JvmsListViewModel = JvmsListViewModelImpl(lifetime.create())
         val profilingTabsController = JvmTabsViewModel(project, lifetime.create(), jvmsListController.connectJvmPublisher)
 
-        return BorderLayoutPanel().apply {
-            addToLeft(jvmsListController.createComponent())
-            addToCenter(profilingTabsController.createComponent())
+        return Splitter(false, 0.2f).apply {
+            setHonorComponentsMinimumSize(false)
+            firstComponent = jvmsListController.createComponent()
+            secondComponent = profilingTabsController.createComponent()
         }
     }
 }
@@ -74,6 +76,8 @@ class JvmTabsViewModel(val project: Project, val lifetime: Lifetime, jvmPublishe
             })
         }
 
-        override fun createComponent() = tabPane.component
+        override fun createComponent() = borderLayoutPanel {
+            addToCenter(tabPane.component)
+        }
     }
 }
