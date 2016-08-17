@@ -115,45 +115,40 @@ void VM::CompiledMethodLoad(jvmtiEnv *jvmti, jmethodID method, jint code_size, c
     fout << "method compiled size=" << code_size << " addr=" << code_addr << std::endl;
     auto &compiles_info = VM::get().compiles_info;
     CompileInfo *info = compiles_info[method];
-    if (info == nullptr) {
-        compiles_info[method] = new CompileInfo(code_size, map_length, code_addr, compile_info);
+    if (info != nullptr && info->method == method) {
+        delete info;
     }
+    info = compiles_info[method] = new CompileInfo(code_size, map_length, code_addr, compile_info, method);
 
-    /*if (compile_info != nullptr) {
+    if (compile_info != nullptr) {
         const jvmtiCompiledMethodLoadRecordHeader *curr = static_cast<const jvmtiCompiledMethodLoadRecordHeader *>(compile_info);
-        fout << "Compiling info\n";
         while (curr != nullptr) {
             switch (curr->kind) {
                 case JVMTI_CMLR_DUMMY: {
                     const jvmtiCompiledMethodLoadDummyRecord *dr = reinterpret_cast<const jvmtiCompiledMethodLoadDummyRecord *>(curr);
-                    fout << "Dummy record" << dr->message << std::endl;
+                    // dummy, nothing interested so far
                     break;
                 }
                 case JVMTI_CMLR_INLINE_INFO: {
                     const jvmtiCompiledMethodLoadInlineRecord *ir = reinterpret_cast<const jvmtiCompiledMethodLoadInlineRecord *>(curr);
-                    fout << "nInline Record numpcs=" << ir->numpcs << std::endl;
                     if (ir->pcinfo != nullptr) {
                         for (int i = 0; i < ir->numpcs; i++) {
                             PCStackInfo pcrecord = (ir->pcinfo[i]);
-
-                            fout << "---------------------------------------\n";
-                            fout << "PC Descriptor: i(" << i << ") (pc=" << (pcrecord.pc) << ")" << std::endl;
-
-//                            PrintStackFrames(&pcrecord, jvmti, fp);
-
+                            for (int j = 0; j < pcrecord.numstackframes; ++j) {
+                                compiles_info[pcrecord.methods[j]] = info;
+                            }
                         }
-                        break;
                     }
+                    break;
                 }
                 default: {
-                    fout << "Unrecognized Record: kind=" << curr->kind << std::endl;
+                    // unknown. How is it even possible? Are you on HotSpot?
                     break;
                 }
             }
             curr = curr->next;
         }
-    }*/
-
+    }
 }
 
 

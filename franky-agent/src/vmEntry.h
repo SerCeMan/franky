@@ -19,13 +19,15 @@
 
 class CompileInfo {
 public:
-    CompileInfo(jint code_size, jint map_length, const void *code_addr, const void *compile_info) :
-            code_size(code_size), map_length(map_length), code_addr(code_addr), compile_info(compile_info) { }
+    CompileInfo(jint code_size, jint map_length, const void *code_addr, const void *compile_info, jmethodID pID) :
+            code_size(code_size), map_length(map_length), code_addr(code_addr), compile_info(compile_info),
+            method(pID) { }
 
     jint code_size;
     jint map_length;
     const void *code_addr;
     const void *compile_info;
+    const jmethodID method;
 };
 
 class VM {

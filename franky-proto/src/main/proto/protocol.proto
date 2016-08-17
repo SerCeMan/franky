@@ -8,6 +8,7 @@ message MethodInfo {
     required string sig = 3;
     required string holder = 4;
     required bool compiled = 5;
+    optional bool inlined = 6;
 }
 
 //

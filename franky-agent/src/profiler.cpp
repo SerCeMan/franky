@@ -362,7 +362,13 @@ MethodInfo *fillMethodInfo(MethodInfo *methodInfo, const jmethodID &jmethod) {
     methodInfo->set_name(mn.name());
     methodInfo->set_holder(mn.holder());
     methodInfo->set_sig(mn.signature());
-    methodInfo->set_compiled(VM::get().compiles_info[jmethod] != nullptr);
+    VM &vm = VM::get();
+    CompileInfo *compiles_info = vm.compiles_info[jmethod];
+    bool is_compiled = compiles_info != nullptr;
+    methodInfo->set_compiled(is_compiled);
+    if (is_compiled) {
+        methodInfo->set_inlined(compiles_info->method != jmethod);
+    }
     return methodInfo;
 }
 

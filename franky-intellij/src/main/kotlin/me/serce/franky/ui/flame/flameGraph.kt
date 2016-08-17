@@ -24,10 +24,7 @@ import java.awt.event.MouseEvent
 import java.awt.image.BufferedImage
 import java.text.NumberFormat
 import java.util.*
-import javax.swing.BorderFactory
-import javax.swing.ImageIcon
-import javax.swing.JComponent
-import javax.swing.JLabel
+import javax.swing.*
 
 class FlameComponent(private val tree: FlameTree, val frameFactory: (Long) -> MethodInfo?) : JComponent() {
     private data class ComponentCoord(val x: Double, val width: Double, val level: Int, val parentWidth: Int) {
@@ -230,8 +227,14 @@ class FrameComponent(val methodInfo: MethodInfo, percentage: Double, samplesCoun
             })
             add(methodLabel)
         })
-        if (hasWarning()/* || true*/) {
-            addToRight(createWarningLabel())
+        if (!methodInfo.isRoot()) {
+            if (!methodInfo.compiled) {
+                addToRight(createWarningLabel("Method hasn't been compiled",
+                        AllIcons.General.BalloonWarning))
+            } else if (!methodInfo.inlined) {
+                addToRight(createWarningLabel("Method hasn't been inlined",
+                        AllIcons.General.BalloonInformation))
+            }
         }
     }
 
@@ -256,11 +259,10 @@ class FrameComponent(val methodInfo: MethodInfo, percentage: Double, samplesCoun
         }
     }
 
-    private fun hasWarning() = !methodInfo.compiled && !methodInfo.isRoot()
     private fun repaintFrame() = repaint()
 
-    private fun createWarningLabel(): JLabel {
-        var warningIcon = AllIcons.General.BalloonWarning
+    private fun createWarningLabel(tooltip: String, ico: Icon): JLabel {
+        var warningIcon = ico
         if (warningIcon.iconHeight == 1) {
             // test mode
             warningIcon = ImageIcon(BufferedImage(16, 16, BufferedImage.TYPE_INT_RGB))
@@ -268,7 +270,7 @@ class FrameComponent(val methodInfo: MethodInfo, percentage: Double, samplesCoun
         return jbLabel {
             icon = warningIcon
             horizontalAlignment = JLabel.CENTER
-            toolTipText = "Method hasn't been compiled"
+            toolTipText = tooltip
         }
     }
 }
