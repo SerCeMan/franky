@@ -10,9 +10,16 @@ Goal of this project is creating profiler which
 
  * Is truthful, because it is built on the top of private JVM API (AsyncGetCallTrace)
  * Can attach to any JVM on the fly
+ * Easy to understand because UI is based on famous flame graphs
  * Have a rich integration with IDE with navigation and inspections showing you how to improve your code based on profiling results (actually, Franky is a plugin for IntelliJ IDEA)
 
-== Rationale
+== How to
+
+ * View -> Tool Windows -> Franky Profiler
+ * Choose JVM and press 'start profiling'
+ * Enjoy the result!
+
+image::screenshot.png[]
 
 == Get it
 
@@ -30,6 +37,10 @@ https://raw.githubusercontent.com/SerCeMan/franky-releases/master/updatePlugins.
 ----
 ./gradlew plugin
 ----
+
+== Supported platforms
+
+Linux x64
 
 == Thanks to
 
