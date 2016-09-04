@@ -31,6 +31,14 @@ Repository URL:
 https://raw.githubusercontent.com/SerCeMan/franky-releases/master/updatePlugins.xml
 ----
 
+== Project status
+
+Currently project is in the alpha stage. Native code is not highly tested and can cause a crash in some rare cases. Agent binaries available only on a restricted set of platforms. 
+
+=== Can I contribute?
+
+Yes! I highly appreciate any contribution! Let's make the profiling great again together! 
+
 == Build it
 
 [source,bash]
