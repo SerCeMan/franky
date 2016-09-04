@@ -231,9 +231,6 @@ class FrameComponent(val methodInfo: MethodInfo, percentage: Double, samplesCoun
             if (!methodInfo.compiled) {
                 addToRight(createWarningLabel("Method hasn't been compiled",
                         AllIcons.General.BalloonWarning))
-            } else if (!methodInfo.inlined) {
-                addToRight(createWarningLabel("Method hasn't been inlined",
-                        AllIcons.General.BalloonInformation))
             }
         }
     }
