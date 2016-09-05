@@ -17,37 +17,35 @@
 #include <string.h>
 #include <jvmti.h>
 #include <jvmticmlr.h>
+#include <easylogging.h>
 #include "profiler.h"
 #include "vmEntry.h"
 
 JavaVM *VM::_vm;
 jvmtiEnv *VM::_jvmti;
-std::ofstream VM::fout;
 
+INITIALIZE_EASYLOGGINGPP
 
 jint VM::init(JavaVM *vm) {
     _vm = vm;
-
-    fout.open("agent.log");
-    fout << "Agent loaded" << std::endl;
+    LOG(INFO) << "Agent loaded";
 
     jint result;
     result = _vm->GetEnv((void **) &_jvmti, JVMTI_VERSION_1_0);
     if (result != JNI_OK || jvmti == NULL) {
-        printf("ERROR: Unable to access JVMTI Version 1 (0x%x),"
-                       " is your J2SE a 1.5 or newer version? JNIEnv's GetEnv() returned %d which is wrong.\n",
-               JVMTI_VERSION_1, (int) result);
-        perror("AAAR");
+        LOG(ERROR) << ("ERROR: Unable to access JVMTI Version 1 (0x%x),"
+                " is your J2SE a 1.5 or newer version? JNIEnv's GetEnv() returned %d which is wrong.\n",
+                JVMTI_VERSION_1, (int) result);
         return result;
     }
 
     jvmtiError error;
     if ((error = set_capabilities()) != JVMTI_ERROR_NONE) {
-        perror("AAAR2");
+        LOG(ERROR) << "Unable to set capabilities";
         return error;
     }
     if ((error = register_all_callback_functions()) != JVMTI_ERROR_NONE) {
-        perror("AAAR3");
+        LOG(ERROR) << "Unable to register callbacks";
         return error;
     }
 
@@ -56,6 +54,7 @@ jint VM::init(JavaVM *vm) {
     _jvmti->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_CLASS_PREPARE, NULL);
     _jvmti->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_COMPILED_METHOD_LOAD, NULL);
 
+    LOG(INFO) << "Agent inited";
     return JNI_OK;
 }
 
@@ -102,8 +101,7 @@ void VM::loadAllMethodIDs(jvmtiEnv *jvmti) {
 }
 
 void VM::close() {
-    fout << "Closing VM" << std::endl;
-    fout.close();
+    LOG(INFO) << "Closing VM";
 }
 
 
@@ -112,7 +110,6 @@ void VM::close() {
  */
 void VM::CompiledMethodLoad(jvmtiEnv *jvmti, jmethodID method, jint code_size, const void *code_addr, jint map_length,
                             const jvmtiAddrLocationMap *map, const void *compile_info) {
-    fout << "method compiled size=" << code_size << " addr=" << code_addr << std::endl;
     auto &compiles_info = VM::get().compiles_info;
     CompileInfo *info = compiles_info[method];
     if (info != nullptr && info->method == method) {
@@ -163,8 +160,7 @@ JNIEXPORT jint JNICALL
 Agent_OnAttach(JavaVM *vm, char *options, void *reserved) {
     VM::attach(vm);
     int port = atoi(options);
-    Profiler::_instance.init(port);
-    return 0;
+    return Profiler::_instance.init(port);;
 }
 
 extern "C"

@@ -34,7 +34,6 @@ class VM {
 private:
     static JavaVM *_vm;
     static jvmtiEnv *_jvmti;
-    static std::ofstream fout;
 
     static void loadMethodIDs(jvmtiEnv *jvmti, jclass klass);
 

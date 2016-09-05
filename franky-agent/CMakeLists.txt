@@ -7,11 +7,13 @@ set(LIB_NAME libasyncProfiler.so)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fPIC")
 
 include_directories(
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${JAVA_HOME}/include
         ${JAVA_HOME}/include/linux
         ${CMAKE_CURRENT_BINARY_DIR})
 
 set(SOURCE_FILES
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
         src/profiler.cpp
         src/profiler.h
         src/vmEntry.cpp

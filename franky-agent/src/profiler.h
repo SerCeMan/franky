@@ -116,7 +116,7 @@ private:
 
     int readRequest(me::serce::franky::Request *message);
 
-    void writeResult();
+    int writeResult();
 
     void saveMethods(me::serce::franky::ProfilingInfo *info, std::unordered_set<jmethodID>& methodIds);
 
@@ -138,7 +138,7 @@ public:
 
     void recordSample(void *ucontext);
 
-    void init(int port);
+    int init(int port);
 };
 
 

@@ -20,6 +20,7 @@
 #include <string.h>
 #include <signal.h>
 #include <string>
+#include <easylogging.h>
 #include <sys/time.h>
 
 #include <unistd.h>
@@ -33,7 +34,6 @@
 
 #include "profiler.h"
 #include "vmEntry.h"
-
 
 using namespace me::serce::franky;
 
@@ -208,13 +208,12 @@ void Profiler::stop() {
     setTimer(0, 0);
 }
 
-void error(const char *msg) {
-    std::string res = std::string("ERROR") + std::string(msg);
-    perror(res.c_str());
-    exit(0);
+int error(const char *msg, int error = -1) {
+    LOG(ERROR) << msg;
+    return error;
 }
 
-void sendResponse(int sockfd, me::serce::franky::Response &message) {
+int sendResponse(int sockfd, me::serce::franky::Response &message) {
     using namespace google::protobuf;
     using namespace google::protobuf::io;
 
@@ -234,9 +233,10 @@ void sendResponse(int sockfd, me::serce::franky::Response &message) {
         // Slightly-slower path when the message is multiple buffers.
         message.SerializeWithCachedSizes(&output);
         if (output.HadError()) {
-            error("HAD ERROR");
+            return error("output has errors");
         }
     }
+    return 0;
 }
 
 /**
@@ -251,7 +251,7 @@ void sendResponse(int sockfd, me::serce::franky::Response &message) {
  *
  * @see VM_RedefineClasses::redefine_single_class and VM_RedefineClasses::flush_dependent_code
  */
-void performWorldDeopt() {
+int performWorldDeopt() {
     jvmtiEnv *jvmti = VM::jvmti();
     JNIEnv *env = VM::jni();
     jvmtiClassDefinition jcd;
@@ -264,7 +264,7 @@ void performWorldDeopt() {
                                         0, 2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 3, 0, 0, 0, 2, 0, 4};
     jcd.klass = env->FindClass(className);
     if (jcd.klass == NULL) {
-        error("klass is NULL");
+        return error("klass is NULL");
     }
     jcd.class_byte_count = sizeof(classBytes);
     jcd.class_bytes = classBytes;
@@ -273,18 +273,20 @@ void performWorldDeopt() {
     if (err != 0) {
         error((std::string("ERROR") + std::to_string(err)).c_str());
     }
+    return err;
 }
 
-
-void Profiler::init(int port) {
+int Profiler::init(int port) {
+    LOG(INFO) << "INIT MESSAGAGE";
+    LOG(ERROR) << "LALALAL MESSAGAGE";
     portno = (uint16_t) port;
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
-        error("opening socket");
+        return error("opening socket");
     }
     server = gethostbyname("localhost");
     if (server == NULL) {
-        error("unable to connect to localhost");
+        return error("unable to connect to localhost");
     }
     struct sockaddr_in serv_addr;
     bzero((char *) &serv_addr, sizeof(serv_addr));
@@ -292,35 +294,54 @@ void Profiler::init(int port) {
     bcopy(server->h_addr, (char *) &serv_addr.sin_addr.s_addr, server->h_length);
     serv_addr.sin_port = htons(portno);
     if (connect(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
-        error("connecting");
+        return error("connecting");
     }
-    performWorldDeopt();
+    int err = performWorldDeopt();
+    if (err < 0) {
+        return error("Unable to deoptimize world.");
+    }
 
     Response response;
     response.set_id(getpid());
     response.set_type(Response_ResponseType_INIT);
-    sendResponse(sockfd, response);
-    while (true) {
-        Request request;
-        int res = readRequest(&request);
-        if (res == -2) {
-            return;
+    try {
+        err = sendResponse(sockfd, response);
+        if (err != 0) {
+            return error("Unable to send init response");
         }
+        while (true) {
+            Request request;
+            int res = readRequest(&request);
+            if (res < 0) {
+                if (res == -2) {
+                    // exit
+                    return 0;
+                }
+                return res;
+            }
 
-        switch (request.type()) {
-            case Request_RequestType_START_PROFILING:
-                start(DEFAULT_INTERVAL);
-                break;
-            case Request_RequestType_STOP_PROFILING:
-                stop();
-                writeResult();
-                break;
-            case Request_RequestType_DETACH:
-                close(sockfd);
-                return;
-            default:
-                continue;
+            switch (request.type()) {
+                case Request_RequestType_START_PROFILING:
+                    start(DEFAULT_INTERVAL);
+                    break;
+                case Request_RequestType_STOP_PROFILING:
+                    stop();
+                    res = writeResult();
+                    if (res != 0) {
+                        return error("Unable to write result");
+                    }
+                    break;
+                case Request_RequestType_DETACH:
+                    close(sockfd);
+                    return 0;
+                default:
+                    continue;
+            }
         }
+    } catch (const google::protobuf::FatalException &fe) {
+        // shouldn't happen
+        LOG(ERROR) << fe.message();
+        return -1;
     }
 }
 
@@ -342,12 +363,10 @@ int Profiler::readRequest(Request *message) {
 
     // Parse the message.
     if (!message->MergeFromCodedStream(&input)) {
-        error("Error paring message 1");
-        return -1;
+        return error("Error paring message 1");
     }
     if (!input.ConsumedEntireMessage()) {
-        error("Error paring message 2");
-        return -1;
+        return error("Error paring message 2");
     }
     return 0;
 }
@@ -372,7 +391,7 @@ MethodInfo *fillMethodInfo(MethodInfo *methodInfo, const jmethodID &jmethod) {
     return methodInfo;
 }
 
-void Profiler::writeResult() {
+int Profiler::writeResult() {
     Response response;
     ProfilingInfo *info = new ProfilingInfo();
 
@@ -390,7 +409,7 @@ void Profiler::writeResult() {
     response.set_id(getpid());
     response.set_type(Response_ResponseType_PROF_INFO);
     response.set_allocated_prof_info(info);
-    sendResponse(sockfd, response);
+    return sendResponse(sockfd, response);
 }
 
 void Profiler::saveCallTraces(ProfilingInfo *info, std::unordered_set<jmethodID> &methods) {
