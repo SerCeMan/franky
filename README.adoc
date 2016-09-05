@@ -54,4 +54,4 @@ Linux x64
 
 * https://github.com/apangin[@apangin] for his https://github.com/apangin/async-profiler[async-profiler]
 * https://github.com/RichardWarburton[@RichardWarburton] for his https://github.com/RichardWarburton/honest-profiler[honest-profiler]
-* https://github.com/nitsanw[@nitsanw] for his awesome talks and article about http://psy-lob-saw.blogspot.ru/2016/06/the-pros-and-cons-of-agct.html[AsyncGetCallTrace profiling] 
+* https://github.com/nitsanw[@nitsanw] for his awesome talks and the article about http://psy-lob-saw.blogspot.ru/2016/06/the-pros-and-cons-of-agct.html[AsyncGetCallTrace profiling] 
