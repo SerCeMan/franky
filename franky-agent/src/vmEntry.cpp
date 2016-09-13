@@ -17,14 +17,12 @@
 #include <string.h>
 #include <jvmti.h>
 #include <jvmticmlr.h>
-#include <easylogging.h>
+#include "logging.h"
 #include "profiler.h"
 #include "vmEntry.h"
 
 JavaVM *VM::_vm;
 jvmtiEnv *VM::_jvmti;
-
-INITIALIZE_EASYLOGGINGPP
 
 jint VM::init(JavaVM *vm) {
     _vm = vm;

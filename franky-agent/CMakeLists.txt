@@ -16,6 +16,7 @@ set(SOURCE_FILES
         ${CMAKE_CURRENT_SOURCE_DIR}/include
         src/profiler.cpp
         src/profiler.h
+        src/logging.h
         src/vmEntry.cpp
         src/vmEntry.h)
 

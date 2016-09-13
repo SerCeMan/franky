@@ -12,6 +12,7 @@ import me.serce.franky.util.ensureLibattach
 import me.serce.franky.util.logger
 import rx.Observable
 import rx.schedulers.Schedulers
+import java.lang.RuntimeException
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import kotlin.concurrent.thread

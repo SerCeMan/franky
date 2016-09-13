@@ -1,3 +1,4 @@
+#pragma once
 /*
  * Copyright 2016 Andrei Pangin
  *

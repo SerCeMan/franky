@@ -20,7 +20,6 @@
 #include <string.h>
 #include <signal.h>
 #include <string>
-#include <easylogging.h>
 #include <sys/time.h>
 
 #include <unistd.h>
@@ -32,6 +31,7 @@
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <unordered_set>
 
+#include "logging.h"
 #include "profiler.h"
 #include "vmEntry.h"
 
@@ -278,7 +278,6 @@ int performWorldDeopt() {
 
 int Profiler::init(int port) {
     LOG(INFO) << "INIT MESSAGAGE";
-    LOG(ERROR) << "LALALAL MESSAGAGE";
     portno = (uint16_t) port;
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
