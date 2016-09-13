@@ -6,7 +6,7 @@ Franky - a simple profiler that always speaks frankly
 
 == Project Goals
 
-Goal of this project is creating profiler which
+Goal of this project is creating a profiler which
 
  * Is truthful, because it is built on the top of private JVM API (AsyncGetCallTrace)
  * Can attach to any JVM on the fly
@@ -33,7 +33,7 @@ https://raw.githubusercontent.com/SerCeMan/franky-releases/master/updatePlugins.
 
 == Project status
 
-Currently project is in the alpha stage. Native code is not highly tested and can cause a crash in some rare cases. Agent binaries available only on a restricted set of platforms. 
+Currently, the project is in the alpha stage. Native code is not highly tested and can cause a crash in some rare cases. Agent binaries available only on a restricted set of platforms.
 
 === Can I contribute?
 

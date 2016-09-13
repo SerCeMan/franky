@@ -5,13 +5,19 @@
     <vendor email="sergeicelov@gmail.com" url="http://serce.me">Sergey Tselovalnikov</vendor>
 
     <description><![CDATA[
-      Enter short description for your plugin here.<br>
-      <em>most HTML tags may be used</em>
+      Franky - a simple profiler that always speaks frankly.
+      <p/>
+      Goal of this project is creating a profiler which
+      <ul>
+      <li>Is truthful, because it is built on the top of private JVM API (AsyncGetCallTrace)</li>
+      <li>Can attach to any JVM on the fly</li>
+      <li>Easy to understand because UI is based on famous flame graphs</li>
+      <li>Have a rich integration with IDE with navigation and inspections showing you how to improve your code based on profiling results (actually, Franky is a plugin for IntelliJ IDEA)</li>
+      </ul>
     ]]></description>
 
     <change-notes><![CDATA[
-      Add change notes here.<br>
-      <em>most HTML tags may be used</em>
+        First version
     ]]>
     </change-notes>
 
