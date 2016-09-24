@@ -3,7 +3,6 @@ package me.serce.franky.jvm
 import com.intellij.openapi.components.ServiceManager
 import com.sun.tools.attach.VirtualMachine
 import com.sun.tools.attach.VirtualMachineDescriptor
-import me.serce.franky.FRANKY_PORT
 import me.serce.franky.FrankyComponent
 import me.serce.franky.Protocol.Request.RequestType.START_PROFILING
 import me.serce.franky.Protocol.Request.RequestType.STOP_PROFILING
@@ -21,9 +20,7 @@ data class AttachableJVM(val id: String, val name: String) : Comparable<Attachab
     override fun compareTo(other: AttachableJVM) = id.compareTo(other.id)
 }
 
-class JVMAttachService(val jvmRemoteService: JVMRemoteService) {
-
-
+class JVMAttachService(val jvmRemoteService: JVMRemoteService, val frankyComponent: FrankyComponent) {
     companion object : Loggable {
         val LOG = logger()
         fun getInstance() = ServiceManager.getService(JVMAttachService::class.java)
@@ -48,7 +45,7 @@ class JVMAttachService(val jvmRemoteService: JVMRemoteService) {
                         throw RuntimeException("Unable to connect to ${jvm.id}", e)
                     }
                 }
-                .map { vm ->
+                .doOnNext { vm ->
                     val pid = vm.id()
                     thread(isDaemon = true, name = "VM Attach Thread pid=$pid") {
                         LOG.info("Attaching Franky JVM agent to pid=$pid")
@@ -58,13 +55,12 @@ class JVMAttachService(val jvmRemoteService: JVMRemoteService) {
                             }
                             val frankyResource = FrankyComponent::class.java.classLoader.getResource("libfrankyagent.so").openStream()
                             Files.copy(frankyResource, frankyPath, REPLACE_EXISTING)
-                            vm.loadAgentPath(frankyPath.toAbsolutePath().toString(), "$FRANKY_PORT")
+                            vm.loadAgentPath(frankyPath.toAbsolutePath().toString(), "${frankyComponent.FRANKY_PORT}")
                         } catch (t: Throwable) {
                             LOG.error("JVM connection had crashed", t)
                         }
                         LOG.info("Franky JVM agent detached from pid=$pid")
                     }
-                    vm
                 }
                 .zipWith(channelObs, { removeVm, vm -> Pair(vm, removeVm) })
                 .subscribeOn(Schedulers.io())
@@ -72,13 +68,13 @@ class JVMAttachService(val jvmRemoteService: JVMRemoteService) {
     }
 }
 
-fun main(args: Array<String>) {
-    val vm = VirtualMachine.attach("25034")
-    thread(isDaemon = true, name = "VM Attach Thread pid=${vm.id()}") {
-        vm.loadAgentPath("/home/serce/git/franky/lib/libfrankyagent.so", "$FRANKY_PORT")
-    }
-    readLine()
-}
+//fun main(args: Array<String>) {
+//    val vm = VirtualMachine.attach("25034")
+//    thread(isDaemon = true, name = "VM Attach Thread pid=${vm.id()}") {
+//        vm.loadAgentPath("/home/serce/git/franky/lib/libfrankyagent.so", "$FRANKY_PORT")
+//    }
+//    readLine()
+//}
 
 class JVMSession(private val remoteJVM: JVMRemoteInstance,
                  private val vm: VirtualMachine) : AutoCloseable, Loggable {

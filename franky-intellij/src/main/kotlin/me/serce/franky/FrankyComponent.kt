@@ -17,12 +17,15 @@ import io.netty.handler.codec.protobuf.ProtobufVarint32LengthFieldPrepender
 import me.serce.franky.Protocol.Response.ResponseType
 import me.serce.franky.jvm.JVMRemoteService
 import me.serce.franky.util.Lifetime
+import me.serce.franky.util.Loggable
+import me.serce.franky.util.logger
 import org.jetbrains.io.addChannelListener
+import java.util.concurrent.ThreadLocalRandom
 
-const val FRANKY_PORT: Int = 4897
-
-class FrankyComponent(val jvmRemoteService: JVMRemoteService) : ApplicationComponent {
+class FrankyComponent(val jvmRemoteService: JVMRemoteService) : ApplicationComponent, Loggable {
+    val LOG = logger()
     val rootLifetime = Lifetime()
+    val FRANKY_PORT: Int = ThreadLocalRandom.current().nextInt(20000, 30000)
 
     private @Volatile var ch: Channel? = null
 
@@ -54,16 +57,15 @@ class FrankyComponent(val jvmRemoteService: JVMRemoteService) : ApplicationCompo
 
                         p.addLast(object : SimpleChannelInboundHandler<Protocol.Response>() {
                             override fun channelActive(ctx: ChannelHandlerContext) {
-                                println("CHAN CONNECTED")
+                                LOG.info("CHAN CONNECTED")
                             }
 
                             override fun channelRead0(ctx: ChannelHandlerContext, msg: Protocol.Response) {
-                                println("Revieved, " + msg)
                                 val channel = ctx.channel()
                                 UIUtil.invokeLaterIfNeeded {
                                     when (msg.type) {
                                         ResponseType.INIT -> jvmRemoteService.setChan(msg.id, channel)
-                                        ResponseType.PROF_INFO -> jvmRemoteService.result(msg.id, msg);
+                                        ResponseType.PROF_INFO -> jvmRemoteService.result(msg.id, msg)
                                         else -> throw RuntimeException("Unknown message $msg")
                                     }
                                 }

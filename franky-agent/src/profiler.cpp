@@ -30,6 +30,7 @@
 #include <google/protobuf/io/coded_stream.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <unordered_set>
+#include <thread>
 
 #include "logging.h"
 #include "profiler.h"
@@ -270,11 +271,62 @@ int performWorldDeopt() {
     jcd.class_bytes = classBytes;
 
     jvmtiError err = jvmti->RedefineClasses(1, &jcd);
-    if (err != 0) {
-        error((std::string("ERROR") + std::to_string(err)).c_str());
-    }
     return err;
 }
+
+int Profiler::handleRequestLoop() {
+    LOG(INFO) << "Sending init response";
+    int err;
+    Response response;
+    response.set_id(getpid());
+    response.set_type(Response_ResponseType_INIT);
+    try {
+        err = sendResponse(sockfd, response);
+        if (err != 0) {
+            return error("Unable to send init response");
+        }
+        LOG(INFO) << "Init response has benn sent";
+        while (true) {
+            Request request;
+            int res = readRequest(&request);
+            if (res < 0) {
+                if (res == -2) {
+                    // exit
+                    return 0;
+                }
+                LOG(ERROR) << "Unable to read request " << res;
+                return res;
+            }
+
+            switch (request.type()) {
+                case Request_RequestType_START_PROFILING:
+                    LOG(INFO) << "Starting profiling";
+                    start(DEFAULT_INTERVAL);
+                    break;
+                case Request_RequestType_STOP_PROFILING:
+                    LOG(INFO) << "Stopping profiling";
+                    stop();
+                    res = writeResult();
+                    if (res != 0) {
+                        return error("Unable to write result");
+                    }
+                    break;
+                case Request_RequestType_DETACH:
+                    LOG(INFO) << "Detaching...";
+                    close(sockfd);
+                    return 0;
+                default:
+                    continue;
+            }
+        }
+    } catch (const google::protobuf::FatalException &fe) {
+        // shouldn't happen
+        LOG(ERROR) << fe.message();
+        return -1;
+    }
+
+}
+
 
 int Profiler::init(int port) {
     LOG(INFO) << "INIT MESSAGAGE";
@@ -299,49 +351,7 @@ int Profiler::init(int port) {
     if (err < 0) {
         return error("Unable to deoptimize world.");
     }
-
-    Response response;
-    response.set_id(getpid());
-    response.set_type(Response_ResponseType_INIT);
-    try {
-        err = sendResponse(sockfd, response);
-        if (err != 0) {
-            return error("Unable to send init response");
-        }
-        while (true) {
-            Request request;
-            int res = readRequest(&request);
-            if (res < 0) {
-                if (res == -2) {
-                    // exit
-                    return 0;
-                }
-                return res;
-            }
-
-            switch (request.type()) {
-                case Request_RequestType_START_PROFILING:
-                    start(DEFAULT_INTERVAL);
-                    break;
-                case Request_RequestType_STOP_PROFILING:
-                    stop();
-                    res = writeResult();
-                    if (res != 0) {
-                        return error("Unable to write result");
-                    }
-                    break;
-                case Request_RequestType_DETACH:
-                    close(sockfd);
-                    return 0;
-                default:
-                    continue;
-            }
-        }
-    } catch (const google::protobuf::FatalException &fe) {
-        // shouldn't happen
-        LOG(ERROR) << fe.message();
-        return -1;
-    }
+    return handleRequestLoop();
 }
 
 int Profiler::readRequest(Request *message) {

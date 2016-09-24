@@ -140,6 +140,8 @@ public:
     void recordSample(void *ucontext);
 
     int init(int port);
+
+    int handleRequestLoop();
 };
 
 

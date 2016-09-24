@@ -21,6 +21,9 @@
 #include "profiler.h"
 #include "vmEntry.h"
 
+
+INITIALIZE_EASYLOGGINGPP
+
 JavaVM *VM::_vm;
 jvmtiEnv *VM::_jvmti;
 
@@ -103,9 +106,6 @@ void VM::close() {
 }
 
 
-/**
- * Also needed to enable DebugNonSafepoints info by default
- */
 void VM::CompiledMethodLoad(jvmtiEnv *jvmti, jmethodID method, jint code_size, const void *code_addr, jint map_length,
                             const jvmtiAddrLocationMap *map, const void *compile_info) {
     auto &compiles_info = VM::get().compiles_info;
@@ -158,7 +158,12 @@ JNIEXPORT jint JNICALL
 Agent_OnAttach(JavaVM *vm, char *options, void *reserved) {
     VM::attach(vm);
     int port = atoi(options);
-    return Profiler::_instance.init(port);;
+    LOG(INFO) << "Starting initializing profiler on port " << port;
+    int res = Profiler::_instance.init(port);
+    if (res < 0) {
+        LOG(ERROR) << "Can't initialize profiler: " << res;
+    }
+    return res;
 }
 
 extern "C"
