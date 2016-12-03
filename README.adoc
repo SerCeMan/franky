@@ -23,13 +23,7 @@ image::screenshot.png[]
 
 == Get it
 
-Franky can be installed as a plugin for IntelliJ IDEA. While Franky is still in alpha you can install it from my own plugin repository using https://www.jetbrains.com/help/idea/2016.1/custom-plugin-repositories-dialog.html[Custom Plugin Repositories Dialog] 
-
-Repository URL:
-[source,bash]
-----
-https://raw.githubusercontent.com/SerCeMan/franky-releases/master/updatePlugins.xml
-----
+Franky can be installed as a plugin for IntelliJ IDEA from the link:https://plugins.jetbrains.com/plugin/8619[repository]
 
 == Project status
 
