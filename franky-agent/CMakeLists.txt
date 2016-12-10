@@ -1,16 +1,25 @@
 cmake_minimum_required(VERSION 3.2)
 project(franky)
 
-set(JAVA_HOME $ENV{JAVA_HOME})
-set(LIB_NAME libasyncProfiler.so)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fPIC")
+if (APPLE)
+    set(JAVA_HOME /Library/Java/JavaVirtualMachines/jdk1.8.0_102.jdk/Contents/Home)
+    set(PLATFORM_INCLUDE ${JAVA_HOME}/include/darwin)
+    set(LIB_NAME libasyncProfiler.so)
+elseif (UNIX)
+    set(JAVA_HOME $ENV{JAVA_HOME})
+    set(PLATFORM_INCLUDE ${JAVA_HOME}/include/linux)
+    set(LIB_NAME libasyncProfiler.so)
+endif ()
 
 include_directories(
         ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${JAVA_HOME}/include
-        ${JAVA_HOME}/include/linux
+        ${PLATFORM_INCLUDE}
         ${CMAKE_CURRENT_BINARY_DIR})
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fPIC")
+
 
 set(SOURCE_FILES
         ${CMAKE_CURRENT_SOURCE_DIR}/include
