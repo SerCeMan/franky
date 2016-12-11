@@ -113,7 +113,7 @@ private:
 
     void storeMethod(jmethodID method);
 
-    void setTimer(long sec, long usec);
+    void setTimer(long sec, int usec);
 
     int readRequest(me::serce::franky::Request *message);
 

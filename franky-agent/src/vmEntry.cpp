@@ -33,10 +33,9 @@ jint VM::init(JavaVM *vm) {
 
     jint result;
     result = _vm->GetEnv((void **) &_jvmti, JVMTI_VERSION_1_0);
-    if (result != JNI_OK || jvmti == NULL) {
-        LOG(ERROR) << ("ERROR: Unable to access JVMTI Version 1 (0x%x),"
-                " is your J2SE a 1.5 or newer version? JNIEnv's GetEnv() returned %d which is wrong.\n",
-                JVMTI_VERSION_1, (int) result);
+    if (result != JNI_OK || _jvmti == NULL) {
+        LOG(ERROR) << "ERROR: Unable to access JVMTI Version 1: "
+                "is your J2SE a 1.5 or newer version? JNIEnv's GetEnv() returned " << result << "which is wrong.\n";
         return result;
     }
 

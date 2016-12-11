@@ -175,7 +175,7 @@ void Profiler::recordSample(void *ucontext) {
     }
 }
 
-void Profiler::setTimer(long sec, long usec) {
+void Profiler::setTimer(long sec, int usec) {
     bool enabled = sec != 0 || usec != 0;
 
     struct sigaction sa;
